@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: satsremit-postgres
+    environment:
+      POSTGRES_USER: satsremit
+      POSTGRES_PASSWORD: satsremit_dev_password
+      POSTGRES_DB: satsremit
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U satsremit"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - satsremit
+
+  # Redis Cache & Message Broker
+  redis:
+    image: redis:7-alpine
+    container_name: satsremit-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - satsremit
+
+  # PgAdmin for Database Management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: satsremit-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@satsremit.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - satsremit
+
+  # FastAPI Application (will be built locally)
+  # api:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: satsremit-api
+  #   environment:
+  #     DATABASE_URL: postgresql://satsremit:satsremit_dev_password@postgres:5432/satsremit
+  #     REDIS_URL: redis://redis:6379/0
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   volumes:
+  #     - .:/app
+  #   networks:
+  #     - satsremit
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  satsremit:
+    driver: bridge

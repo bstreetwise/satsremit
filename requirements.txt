@@ -1,0 +1,61 @@
+# Core Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Database
+sqlalchemy==2.0.23
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# Async & Task Queue
+celery==5.3.4
+redis==5.0.1
+asyncio-contextmanager==1.0.0
+
+# Lightning Network / Bitcoin
+lnd-grpc==0.18.0
+grpcio==1.60.0
+grpcio-tools==1.60.0
+
+# Payments & Crypto
+requests==2.31.0
+httpx==0.25.2
+
+# Notifications
+# Africa's Talking uses REST API (included via requests)
+# But can use their SDK if preferred:
+# africastalking==1.0.5
+
+# Authentication & Security
+PyJWT==2.8.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+cryptography==41.0.7
+
+# Rate Limiting & Validation
+slowapi==0.1.9
+python-multipart==0.0.6
+
+# Utilities
+python-dotenv==1.0.0
+python-dateutil==2.8.2
+click==8.1.7
+structlog==23.2.0
+jsonschema==4.20.0
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+httpx==0.25.2
+
+# Code Quality
+black==23.12.0
+ruff==0.1.11
+mypy==1.7.1
+isort==5.13.2
+
+# Monitoring & Logging
+python-json-logger==2.0.7
