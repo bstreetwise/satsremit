@@ -10,8 +10,6 @@ import os
 from datetime import datetime, timedelta
 from typing import Dict, Any
 
-import asyncio
-
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
@@ -20,6 +18,7 @@ from src.db.database import get_db
 from src.models.models import Transfer
 from src.services.transfer import TransferService
 from src.services.notification import NotificationService
+from src.services.webhook import run_async
 
 logger = logging.getLogger(__name__)
 
@@ -99,9 +98,10 @@ def handle_verification_timeouts(self) -> Dict[str, Any]:
                     f"✅ Transfer {transfer.id} marked for refund"
                 )
                 
-                # Send notifications (run async coroutines from sync Celery task)
+                # Send notifications — run_async() is safe in a Celery
+                # prefork worker (no running event loop in that process).
                 try:
-                    asyncio.run(notification_service.send_whatsapp(
+                    run_async(notification_service.send_whatsapp(
                         phone_number=transfer.receiver_phone,
                         message=(
                             f"Verification timeout. Your payment of "
@@ -109,9 +109,8 @@ def handle_verification_timeouts(self) -> Dict[str, Any]:
                             f"within 24 hours."
                         ),
                     ))
-                    # Notify agent via the agent relationship
                     if transfer.agent and transfer.agent.phone:
-                        asyncio.run(notification_service.send_whatsapp(
+                        run_async(notification_service.send_whatsapp(
                             phone_number=transfer.agent.phone,
                             message=(
                                 f"Refund required for transfer {transfer.id}: "
@@ -268,7 +267,7 @@ def resend_pin(self, transfer_id: str) -> Dict[str, Any]:
         # Resend PIN — note: transfer.pin_generated is a bcrypt hash, not the
         # plaintext PIN.  The plaintext is only available at generation time.
         # This task can only re-notify that a PIN was sent; do not expose the hash.
-        asyncio.run(notification_service.send_whatsapp(
+        run_async(notification_service.send_whatsapp(
             phone_number=transfer.receiver_phone,
             message=(
                 f"A verification PIN was sent for your transfer. "

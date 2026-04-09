@@ -8,7 +8,6 @@ Daily settlement processor that:
 4. Initiates payouts via agent's preferred method
 """
 
-import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
@@ -22,6 +21,7 @@ from src.core.celery import app
 from src.db.database import get_db
 from src.models.models import Transfer, Settlement, Agent
 from src.services.notification import NotificationService
+from src.services.webhook import run_async
 
 logger = logging.getLogger(__name__)
 
@@ -147,9 +147,10 @@ def process_daily_settlements(self) -> Dict[str, Any]:
                     Decimal(str(stats["total_payouts"])) + payout_amount
                 )
                 
-                # Send settlement notification (run async from sync Celery task)
+                # Send settlement notification — run_async() is safe in a
+                # Celery prefork worker (no running event loop in that process).
                 try:
-                    asyncio.run(notification_service.send_whatsapp(
+                    run_async(notification_service.send_whatsapp(
                         phone_number=agent_phone,
                         message=(
                             f"Settlement processed: ZAR {payout_amount:.2f} "

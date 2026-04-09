@@ -74,13 +74,13 @@ async def handle_lnd_invoice_settled(
 
         # Create webhook service
         webhook_service = WebhookService(db)
-        
-        # Process the webhook
-        result = webhook_service.process_lnd_invoice_settled(
+
+        # Await the async handler — do NOT wrap in asyncio.run()
+        result = await webhook_service.process_lnd_invoice_settled(
             invoice_hash=webhook.invoice_hash,
             state=webhook.state,
             settled_at=webhook.settled_at,
-            amount_milli_satoshis=webhook.amount_milli_satoshis
+            amount_milli_satoshis=webhook.amount_milli_satoshis,
         )
         
         # Return response
@@ -156,7 +156,7 @@ async def retry_failed_webhooks(
     """
     try:
         webhook_service = WebhookService(db)
-        result = webhook_service.retry_failed_webhooks()
+        result = await webhook_service.retry_failed_webhooks()
         
         return {
             "status": "success",
