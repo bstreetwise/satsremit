@@ -13,8 +13,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from src.core.celery import app
-from src.core.database import get_db
-from src.models import Webhook
+from src.db.database import get_db
+from src.models.models import Webhook
 from src.services.webhook import WebhookService
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ def retry_failed_webhooks(self) -> Dict[str, Any]:
     db = None
     try:
         db = next(get_db())
-        webhook_service = WebhookService()
+        webhook_service = WebhookService(db)
         
         stats = {
             "checked": 0,
@@ -165,7 +165,7 @@ def retry_webhook(self, webhook_id: str) -> Dict[str, Any]:
     db = None
     try:
         db = next(get_db())
-        webhook_service = WebhookService()
+        webhook_service = WebhookService(db)
         
         webhook = db.query(Webhook).filter(
             Webhook.id == webhook_id

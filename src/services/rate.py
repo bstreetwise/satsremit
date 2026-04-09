@@ -50,9 +50,9 @@ class RateService:
         ).first()
 
         if db_cache:
-            # Check if still valid
-            age = datetime.utcnow() - db_cache.created_at if db_cache.created_at else None
-            if age and age < timedelta(minutes=self.cache_minutes):
+            # Check if still valid — cached_at always has a DB default
+            age = datetime.utcnow() - db_cache.cached_at
+            if age < timedelta(minutes=self.cache_minutes):
                 rate = Decimal(str(db_cache.rate))
                 self._rate_cache[pair] = {
                     "rate": rate,
@@ -68,7 +68,7 @@ class RateService:
             # Update cache
             if db_cache:
                 db_cache.rate = rate
-                db_cache.created_at = datetime.utcnow()
+                db_cache.cached_at = datetime.utcnow()
             else:
                 db_cache = RateCache(
                     pair=pair,

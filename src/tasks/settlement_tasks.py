@@ -8,7 +8,9 @@ Daily settlement processor that:
 4. Initiates payouts via agent's preferred method
 """
 
+import asyncio
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 from decimal import Decimal
@@ -17,8 +19,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 
 from src.core.celery import app
-from src.core.database import get_db
-from src.models import Transfer, Settlement, Settlement_type
+from src.db.database import get_db
+from src.models.models import Transfer, Settlement, Agent
 from src.services.notification import NotificationService
 
 logger = logging.getLogger(__name__)
@@ -61,28 +63,31 @@ def process_daily_settlements(self) -> Dict[str, Any]:
         
         logger.info("💰 Starting daily settlement processing...")
         
-        # Get agents with verified transfers ready for settlement
-        agents_with_verified = db.query(
-            Transfer.agent_id,
-            Transfer.agent_phone,
-            Transfer.agent_name,
-        ).filter(
-            and_(
-                Transfer.state == "VERIFIED",
-                Transfer.settlement_id.is_(None),
-            )
-        ).distinct().all()
-        
+        # Get distinct agent IDs that have PAYOUT_EXECUTED transfers not yet settled
+        agent_ids = [
+            row[0]
+            for row in db.query(Transfer.agent_id).filter(
+                Transfer.state == "PAYOUT_EXECUTED",
+            ).distinct().all()
+        ]
+
+        # Resolve agent records
+        agents_with_verified = db.query(Agent).filter(
+            Agent.id.in_(agent_ids)
+        ).all()
+
         logger.info(f"Found {len(agents_with_verified)} agents with verified transfers")
-        
-        for agent_id, agent_phone, agent_name in agents_with_verified:
+
+        for agent_obj in agents_with_verified:
+            agent_id = agent_obj.id
+            agent_phone = agent_obj.phone
+            agent_name = agent_obj.name
             try:
-                # Get all verified transfers for this agent
+                # Get all payout-executed transfers for this agent not yet settled
                 transfers = db.query(Transfer).filter(
                     and_(
                         Transfer.agent_id == agent_id,
-                        Transfer.state == "VERIFIED",
-                        Transfer.settlement_id.is_(None),
+                        Transfer.state == "PAYOUT_EXECUTED",
                     )
                 ).all()
                 
@@ -106,17 +111,18 @@ def process_daily_settlements(self) -> Dict[str, Any]:
                     f"ZAR {total_fees:.2f} fees"
                 )
                 
-                # Create settlement record
+                # Create settlement record aligned with Settlement ORM model
+                now = datetime.utcnow()
+                week_start = now - timedelta(days=now.weekday())
+                week_end = week_start + timedelta(days=6)
                 settlement = Settlement(
                     agent_id=agent_id,
-                    settlement_type=Settlement_type.DAILY,
-                    settled_at=datetime.utcnow(),
-                    transfer_count=len(transfers),
-                    total_amount_zar=total_amount,
-                    fee_amount_zar=total_fees,
-                    payout_amount_zar=payout_amount,
+                    period_start=week_start.replace(hour=0, minute=0, second=0, microsecond=0),
+                    period_end=week_end.replace(hour=23, minute=59, second=59, microsecond=0),
+                    amount_zar_owed=total_amount,
+                    amount_zar_paid=Decimal("0.00"),
+                    commission_sats_earned=0,
                     status="PENDING",
-                    notes=f"Daily settlement: {len(transfers)} transfers",
                 )
                 
                 db.add(settlement)
@@ -141,9 +147,9 @@ def process_daily_settlements(self) -> Dict[str, Any]:
                     Decimal(str(stats["total_payouts"])) + payout_amount
                 )
                 
-                # Send settlement notification
+                # Send settlement notification (run async from sync Celery task)
                 try:
-                    notification_service.send_message_async(
+                    asyncio.run(notification_service.send_whatsapp(
                         phone_number=agent_phone,
                         message=(
                             f"Settlement processed: ZAR {payout_amount:.2f} "
@@ -151,13 +157,11 @@ def process_daily_settlements(self) -> Dict[str, Any]:
                             f"Fees: ZAR {total_fees:.2f}. "
                             f"Settlement ID: {settlement.id}"
                         ),
-                        notification_type="settlement_created",
-                    )
-                    
+                    ))
                     logger.info(
-                        f"✅ Settlement {settlement.id} created and notified for {agent_name}"
+                        f"Settlement {settlement.id} created and notified for {agent_name}"
                     )
-                
+
                 except Exception as e:
                     logger.error(f"Failed to notify agent: {str(e)}")
             

@@ -250,6 +250,7 @@ class HealthCheckResponse(BaseModel):
     lnd_active: bool
     db_connected: bool
     redis_connected: bool
+    celery_active: bool
     timestamp: datetime
 
 

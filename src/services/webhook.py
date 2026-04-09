@@ -11,7 +11,7 @@ import uuid
 from src.models.models import Transfer, TransferState, TransferHistory, Webhook as WebhookModel
 from src.services.transfer import TransferService
 from src.services.notification import NotificationService
-from src.core.security import generate_pin
+from src.core.security import generate_pin, hash_pin
 
 logger = logging.getLogger(__name__)
 
@@ -92,9 +92,9 @@ class WebhookService:
             
             # 5. Generate PIN for receiver verification
             pin = generate_pin()
-            # In production, store hashed PIN: transfer.pin_generated = hash_pin(pin)
-            # For now, we'll store it temporarily (should be stored securely)
-            transfer.pin_generated = pin  # In production: hash this
+            # Store bcrypt hash — the plaintext PIN is sent to the receiver via WhatsApp
+            # and never persisted; the hash is used later for verification
+            transfer.pin_generated = hash_pin(pin)
             
             logger.info(f"Generated PIN: {pin} for transfer {transfer.reference}")
             
@@ -160,10 +160,11 @@ class WebhookService:
         
         logger.info(f"Sending receiver notification to {transfer.receiver_phone}")
         
-        result = self.notification_service.send_message(
-            phone=transfer.receiver_phone,
-            message=message
-        )
+        import asyncio
+        result = asyncio.run(self.notification_service.send_whatsapp(
+            phone_number=transfer.receiver_phone,
+            message=message,
+        ))
         
         if result:
             logger.info(f"Receiver notification sent successfully to {transfer.receiver_phone}")
@@ -191,10 +192,10 @@ class WebhookService:
         
         logger.info(f"Sending agent notification to {agent.phone}")
         
-        result = self.notification_service.send_message(
-            phone=agent.phone,
-            message=message
-        )
+        result = asyncio.run(self.notification_service.send_whatsapp(
+            phone_number=agent.phone,
+            message=message,
+        ))
         
         if result:
             logger.info(f"Agent notification sent successfully to {agent.phone}")

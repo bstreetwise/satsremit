@@ -6,6 +6,7 @@ triggers webhook processing when payments are detected.
 """
 
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
@@ -13,11 +14,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from src.core.celery import app
-from src.core.database import get_db
-from src.core.config import settings
+from src.db.database import get_db
+from src.core.config import get_settings
 from src.services.lnd import LNDService
 from src.services.webhook import WebhookService
-from src.models import Transfer
+from src.models.models import Transfer
 from src.api.schemas import LNDInvoiceSettledWebhook
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,7 @@ def monitor_lnd_invoices(self):
     try:
         db = next(get_db())
         lnd_service = LNDService()
-        webhook_service = WebhookService()
+        webhook_service = WebhookService(db)
         
         stats = {
             "checked": 0,

@@ -1,8 +1,8 @@
 """
 SQLAlchemy ORM Models for SatsRemit
 """
-from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, Enum, ForeignKey, JSON
-from sqlalchemy.dialects.postgresql import UUID, DECIMAL
+from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean, Enum, ForeignKey, JSON, Numeric
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 import uuid
@@ -55,9 +55,9 @@ class Transfer(Base):
     agent = relationship("Agent", back_populates="transfers")
     
     # Amounts
-    amount_zar = Column(DECIMAL(15, 2), nullable=False)
+    amount_zar = Column(Numeric(15, 2), nullable=False)
     amount_sats = Column(Integer, nullable=False)  # in satoshis
-    rate_zar_per_btc = Column(DECIMAL(15, 2), nullable=False)  # rate at time of transfer
+    rate_zar_per_btc = Column(Numeric(15, 2), nullable=False)  # rate at time of transfer
     
     # LND Invoice
     invoice_hash = Column(String(66), unique=True, nullable=True, index=True)
@@ -98,13 +98,15 @@ class Agent(Base):
     
     # Security
     password_hash = Column(String(255), nullable=False)
+    is_admin = Column(Boolean, default=False, nullable=False)
+    must_change_password = Column(Boolean, default=False, nullable=False)
     
     # Location
     location_code = Column(String(10), nullable=False)  # e.g., "ZWE_HRR"
     location_name = Column(String(100), nullable=False)
     
     # Financial
-    cash_balance_zar = Column(DECIMAL(15, 2), default=0, nullable=False)
+    cash_balance_zar = Column(Numeric(15, 2), default=0, nullable=False)
     commission_balance_sats = Column(Integer, default=0, nullable=False)  # in satoshis
     
     # Status
@@ -135,8 +137,8 @@ class Settlement(Base):
     period_end = Column(DateTime, nullable=False)    # Sunday
     
     # Financial
-    amount_zar_owed = Column(DECIMAL(15, 2), nullable=False)  # Total cash agent paid out
-    amount_zar_paid = Column(DECIMAL(15, 2), default=0, nullable=False)  # Actual payment
+    amount_zar_owed = Column(Numeric(15, 2), nullable=False)  # Total cash agent paid out
+    amount_zar_paid = Column(Numeric(15, 2), default=0, nullable=False)  # Actual payment
     commission_sats_earned = Column(Integer, default=0, nullable=False)  # in satoshis
     
     # Settlement Details
@@ -195,7 +197,7 @@ class RateCache(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     pair = Column(String(10), unique=True, nullable=False, index=True)  # e.g., "ZAR_BTC"
-    rate = Column(DECIMAL(20, 8), nullable=False)
+    rate = Column(Numeric(20, 8), nullable=False)
     source = Column(String(50), nullable=False)  # "coingecko", "kraken", etc.
     
     cached_at = Column(DateTime, default=datetime.utcnow, nullable=False)

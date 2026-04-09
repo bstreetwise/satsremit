@@ -19,8 +19,8 @@ from src.api.schemas import (
     AdminTransferListResponse,
     AdminVolumeResponse,
 )
-from src.core.dependencies import get_db
-from src.core.security import hash_password, get_current_agent
+from src.core.dependencies import get_db, get_rate_service
+from src.core.security import hash_password, get_current_admin
 from src.models.models import (
     Agent,
     AgentStatus,
@@ -41,7 +41,7 @@ router = APIRouter()
 async def create_agent(
     request: AdminAgentCreateRequest,
     db: Session = Depends(get_db),
-    current_admin: dict = Depends(get_current_agent),  # TODO: Implement admin check
+    current_admin: dict = Depends(get_current_admin),
 ):
     """
     Create new agent
@@ -57,18 +57,22 @@ async def create_agent(
                 detail="Agent phone already registered"
             )
 
-        # Create agent
+        # Create agent with a temporary password.
+        # must_change_password=True forces the agent to set their own password
+        # on first login before they can use the API.
         agent = Agent(
             id=uuid.uuid4(),
             phone=request.phone,
             name=request.name,
             email=None,
-            password_hash=hash_password("TempPassword123!"),  # Temp, agent should change
+            password_hash=hash_password("TempPassword123!"),
             location_code=request.location_code,
-            location_name=request.location_code,  # TODO: Map to name
+            location_name=request.location_code,  # TODO: Map code to human-readable name
             cash_balance_zar=request.initial_cash_zar or Decimal("0.00"),
             commission_balance_sats=0,
             status=AgentStatus.ACTIVE,
+            is_admin=False,
+            must_change_password=True,
             rating=None,
             total_transfers=0,
         )
@@ -101,7 +105,7 @@ async def create_agent(
 async def get_agent_balance_admin(
     agent_id: str,
     db: Session = Depends(get_db),
-    current_admin: dict = Depends(get_current_agent),  # TODO: Implement admin check
+    current_admin: dict = Depends(get_current_admin),
 ):
     """
     Get agent financial status - admin view
@@ -125,9 +129,10 @@ async def get_agent_balance_admin(
 
         pending_zar = pending.amount_zar_owed if pending else Decimal("0.00")
 
-        # Commission in ZAR (approx)
-        # TODO: Get actual historical rate
-        commission_zar = Decimal(agent.commission_balance_sats) / Decimal("100000000") * Decimal("120000")
+        # Commission in ZAR using live exchange rate
+        rate_svc = get_rate_service(db)
+        live_rate = await rate_svc.get_zar_per_btc()
+        commission_zar = Decimal(agent.commission_balance_sats) / Decimal("100000000") * live_rate
 
         return AdminAgentBalanceResponse(
             agent_id=str(agent.id),
@@ -153,7 +158,7 @@ async def record_agent_advance(
     agent_id: str,
     request: AdminAgentAdvanceRequest,
     db: Session = Depends(get_db),
-    current_admin: dict = Depends(get_current_agent),  # TODO: Implement admin check
+    current_admin: dict = Depends(get_current_admin),
 ):
     """
     Record cash advance or corrective entry
@@ -201,7 +206,7 @@ async def list_transfers_admin(
     limit: int = Query(100, le=1000),
     offset: int = Query(0),
     db: Session = Depends(get_db),
-    current_admin: dict = Depends(get_current_agent),  # TODO: Implement admin check
+    current_admin: dict = Depends(get_current_admin),
 ):
     """
     List all transfers - admin full audit view
@@ -250,7 +255,7 @@ async def list_transfers_admin(
 @router.get("/volume", response_model=AdminVolumeResponse)
 async def get_volume_analytics(
     db: Session = Depends(get_db),
-    current_admin: dict = Depends(get_current_agent),  # TODO: Implement admin check
+    current_admin: dict = Depends(get_current_admin),
 ):
     """
     Get platform volume analytics
@@ -300,10 +305,13 @@ async def get_volume_analytics(
         monthly_volume = Decimal(monthly.volume) if monthly.volume else Decimal("0.00")
         monthly_count = monthly.count or 0
 
-        # Calculate fees
-        daily_fees_sats = int((daily_volume / Decimal("120000")) * Decimal("100000000") * Decimal("0.01"))
-        weekly_fees_sats = int((weekly_volume / Decimal("120000")) * Decimal("100000000") * Decimal("0.01"))
-        monthly_fees_sats = int((monthly_volume / Decimal("120000")) * Decimal("100000000") * Decimal("0.01"))
+        # Use live rate for ZAR→sats fee conversion
+        rate_svc = get_rate_service(db)
+        live_rate = await rate_svc.get_zar_per_btc()
+        fee_factor = Decimal("100000000") * Decimal("0.01") / live_rate
+        daily_fees_sats = int(daily_volume * fee_factor)
+        weekly_fees_sats = int(weekly_volume * fee_factor)
+        monthly_fees_sats = int(monthly_volume * fee_factor)
 
         return AdminVolumeResponse(
             daily_volume_zar=daily_volume,
@@ -328,7 +336,7 @@ async def get_volume_analytics(
 @router.get("/health")
 async def admin_health(
     db: Session = Depends(get_db),
-    current_admin: dict = Depends(get_current_agent),  # TODO: Implement admin check
+    current_admin: dict = Depends(get_current_admin),
 ):
     """
     Admin health check - system status

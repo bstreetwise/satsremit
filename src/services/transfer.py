@@ -4,7 +4,6 @@ Orchestrates transfer lifecycle: invoice creation, payment verification, settlem
 """
 
 import logging
-import hashlib
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
@@ -23,6 +22,8 @@ from src.models.models import (
 )
 from src.services.lnd import LNDService
 from src.core.config import get_settings
+from src.core.security import encrypt_preimage, decrypt_preimage
+from src.utils import generate_reference
 
 logger = logging.getLogger(__name__)
 
@@ -38,14 +39,8 @@ class TransferService:
         self.verification_timeout = self.settings.verification_timeout_minutes
 
     def _generate_reference(self) -> str:
-        """Generate unique transfer reference (20 chars)"""
-        timestamp = datetime.utcnow().strftime("%y%m%d%H%M%S")  # 12 chars
-        random_suffix = secrets.token_hex(4)  # 8 chars
-        return f"{timestamp}{random_suffix}"
-
-    def _hash_phone(self, phone: str) -> str:
-        """Hash phone number for privacy"""
-        return hashlib.sha256(phone.encode()).hexdigest()[:16]
+        """Generate unique transfer reference (20 chars) — delegates to utils."""
+        return generate_reference()
 
     async def initiate_transfer(
         self,
@@ -365,19 +360,19 @@ class TransferService:
             # Generate preimage for invoice settlement
             preimage = secrets.token_hex(32)  # 32 bytes = 64 hex chars
 
-            # Store preimage (should be encrypted in production)
+            # Encrypt preimage before persisting — never store plaintext
             hold_record = InvoiceHold(
                 id=uuid.uuid4(),
                 invoice_hash=transfer.invoice_hash,
                 transfer_id=transfer.id,
-                preimage=preimage,  # TODO: Encrypt this
+                preimage=encrypt_preimage(preimage),
                 expires_at=datetime.utcnow() + timedelta(hours=1),
             )
 
             self.db.add(hold_record)
             self.db.commit()
 
-            # Settle invoice
+            # Settle invoice using the plaintext preimage (in memory only)
             await self.lnd.settle_invoice(preimage)
 
             # Update transfer
@@ -475,12 +470,14 @@ class TransferService:
                     f"Cannot refund transfer in state {transfer.state}"
                 )
 
+            # Capture old_state BEFORE mutating so the audit log is accurate
+            old_state = transfer.state
             transfer.state = TransferState.REFUNDED
             self.db.commit()
 
             self._log_state_change(
                 transfer.id,
-                old_state=transfer.state,
+                old_state=old_state,
                 new_state=TransferState.REFUNDED,
                 reason=f"Refunded: {reason}",
                 actor_type="system",

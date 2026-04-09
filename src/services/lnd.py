@@ -12,9 +12,17 @@ from decimal import Decimal
 import ssl
 
 import httpx
-from grpc import aio as grpc_aio
-import invoicesrpc
-import lnrpc
+
+try:
+    from grpc import aio as grpc_aio
+    import invoicesrpc
+    import lnrpc
+    _GRPC_AVAILABLE = True
+except ImportError:  # pragma: no cover — only missing in test/CI environments
+    grpc_aio = None  # type: ignore[assignment]
+    invoicesrpc = None  # type: ignore[assignment]
+    lnrpc = None  # type: ignore[assignment]
+    _GRPC_AVAILABLE = False
 
 from src.core.config import get_settings
 
@@ -48,15 +56,28 @@ class LNDService:
             raise
 
     def _get_ssl_context(self) -> ssl.SSLContext:
-        """Get SSL context for LND REST API"""
+        """
+        Get SSL context for LND REST API.
+
+        Loads the TLS certificate from the path configured in
+        ``settings.lnd_cert_path`` so that the LND self-signed cert is
+        trusted without disabling verification entirely.
+
+        LND uses an IP SAN rather than a hostname in its cert, so
+        ``check_hostname`` is disabled while ``verify_mode`` remains
+        ``CERT_REQUIRED``.
+        """
         if self._ssl_context:
             return self._ssl_context
         try:
             context = ssl.create_default_context()
             context.check_hostname = False
-            context.verify_mode = ssl.CERT_NONE
+            context.load_verify_locations(self.cert_path)
             self._ssl_context = context
             return context
+        except FileNotFoundError:
+            logger.error(f"LND TLS cert not found at {self.cert_path}")
+            raise
         except Exception as e:
             logger.error(f"Failed to create SSL context: {e}")
             raise
@@ -109,7 +130,7 @@ class LNDService:
             if cltv_expiry:
                 payload["cltv_expiry"] = str(cltv_expiry)
 
-            async with httpx.AsyncClient(verify=False, timeout=30) as client:
+            async with httpx.AsyncClient(verify=self._get_ssl_context(), timeout=30) as client:
                 response = await client.post(url, json=payload, headers=headers)
                 response.raise_for_status()
 
@@ -140,7 +161,7 @@ class LNDService:
             url = f"{self.rest_url}/v1/invoice/{payment_hash}"
             headers = self._get_headers()
 
-            async with httpx.AsyncClient(verify=False, timeout=30) as client:
+            async with httpx.AsyncClient(verify=self._get_ssl_context(), timeout=30) as client:
                 response = await client.get(url, headers=headers)
 
                 if response.status_code == 404:
@@ -207,7 +228,7 @@ class LNDService:
 
             payload = {"preimage": preimage}
 
-            async with httpx.AsyncClient(verify=False, timeout=30) as client:
+            async with httpx.AsyncClient(verify=self._get_ssl_context(), timeout=30) as client:
                 response = await client.post(url, json=payload, headers=headers)
                 response.raise_for_status()
 
@@ -233,7 +254,7 @@ class LNDService:
             url = f"{self.rest_url}/v1/balance/blockchain"
             headers = self._get_headers()
 
-            async with httpx.AsyncClient(verify=False, timeout=30) as client:
+            async with httpx.AsyncClient(verify=self._get_ssl_context(), timeout=30) as client:
                 response = await client.get(url, headers=headers)
                 response.raise_for_status()
 
@@ -262,7 +283,7 @@ class LNDService:
             url = f"{self.rest_url}/v1/channels"
             headers = self._get_headers()
 
-            async with httpx.AsyncClient(verify=False, timeout=30) as client:
+            async with httpx.AsyncClient(verify=self._get_ssl_context(), timeout=30) as client:
                 response = await client.get(url, headers=headers)
                 response.raise_for_status()
 
@@ -314,7 +335,7 @@ class LNDService:
                 "timeout_seconds": timeout_seconds,
             }
 
-            async with httpx.AsyncClient(verify=False, timeout=timeout_seconds + 10) as client:
+            async with httpx.AsyncClient(verify=self._get_ssl_context(), timeout=timeout_seconds + 10) as client:
                 response = await client.post(url, json=payload, headers=headers)
                 response.raise_for_status()
 
@@ -346,7 +367,7 @@ class LNDService:
             url = f"{self.rest_url}/v1/getinfo"
             headers = self._get_headers()
 
-            async with httpx.AsyncClient(verify=False, timeout=30) as client:
+            async with httpx.AsyncClient(verify=self._get_ssl_context(), timeout=30) as client:
                 response = await client.get(url, headers=headers)
                 response.raise_for_status()
 
@@ -384,7 +405,7 @@ class LNDService:
                 "type": address_type.upper(),
             }
 
-            async with httpx.AsyncClient(verify=False, timeout=30) as client:
+            async with httpx.AsyncClient(verify=self._get_ssl_context(), timeout=30) as client:
                 response = await client.post(url, json=payload, headers=headers)
                 response.raise_for_status()
 

@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     rate_limit_requests: int = 5
     rate_limit_window_minutes: int = 60
     webhook_secret: str
+    # 32-byte URL-safe base64-encoded key for Fernet preimage encryption.
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    preimage_encryption_key: str = ""
     
     # Payment Methods
     allowed_withdrawal_methods: str = "bank_transfer,physical_cash,mobile_money"
@@ -76,11 +79,9 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
-        fields = {
-            "whatsapp_business_account_id": {"env": "WHATSAPP_BUSINESS_ACCOUNT_ID"},
-            "whatsapp_business_phone_number_id": {"env": "WHATSAPP_BUSINESS_PHONE_NUMBER_ID"},
-            "whatsapp_business_access_token": {"env": "WHATSAPP_BUSINESS_ACCESS_TOKEN"},
-        }
+        # Allow extra env vars in .env that aren't defined in Settings
+        # (e.g. API_TITLE, API_VERSION set by Docker Compose, etc.)
+        extra = "ignore"
     
     @property
     def is_production(self) -> bool:

@@ -1,12 +1,14 @@
 """
 Webhook API Routes - Receive callbacks from LND and other services
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from src.core.dependencies import get_db
+from src.core.security import verify_webhook_hmac
 from src.api.schemas import LNDInvoiceSettledWebhook, LNDInvoiceSettledResponse
 from src.services.webhook import WebhookService
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,8 +17,10 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
 @router.post("/lnd/invoice-settled")
 async def handle_lnd_invoice_settled(
+    request: Request,
     webhook: LNDInvoiceSettledWebhook,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    x_webhook_signature: Optional[str] = Header(None, alias="X-Webhook-Signature"),
 ) -> LNDInvoiceSettledResponse:
     """
     Webhook endpoint for LND invoice settled event
@@ -57,8 +61,17 @@ async def handle_lnd_invoice_settled(
     """
     
     try:
+        # Verify HMAC-SHA256 signature from LND
+        body = await request.body()
+        if not verify_webhook_hmac(body, x_webhook_signature or ""):
+            logger.warning("Webhook signature verification failed")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid webhook signature",
+            )
+
         logger.info(f"Received invoice settled webhook for: {webhook.invoice_hash}")
-        
+
         # Create webhook service
         webhook_service = WebhookService(db)
         
@@ -157,22 +170,28 @@ async def retry_failed_webhooks(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to retry webhooks"
         )
-    raise HTTPException(status_code=501, detail="Not implemented")
 
 
 @router.post("/lnd/invoice-expired")
 async def lnd_invoice_expired(
+    request: Request,
     invoice_hash: str,
     db: Session = Depends(get_db),
-    verified: bool = Depends(verify_webhook_signature),
+    x_webhook_signature: Optional[str] = Header(None, alias="X-Webhook-Signature"),
 ):
     """
     LND webhook: Invoice expired callback
-    
-    Triggered when hold invoice expires without payment:
-    1. Find transfer by invoice_hash
-    2. Transition to REFUNDED
-    3. Notify sender
+
+    Triggered when a hold invoice expires without payment.
+    Transitions the matching transfer to REFUNDED and notifies the sender.
     """
-    # TODO: Implement invoice expiry handling
-    raise HTTPException(status_code=501, detail="Not implemented")
+    body = await request.body()
+    if not verify_webhook_hmac(body, x_webhook_signature or ""):
+        logger.warning("Invoice-expired webhook signature verification failed")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid webhook signature",
+        )
+
+    # TODO: Implement full invoice expiry handling
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Not implemented")

@@ -11,8 +11,8 @@ from typing import Dict, Any
 from sqlalchemy.orm import Session
 
 from src.core.celery import app
-from src.core.database import get_db
-from src.models import Transfer
+from src.db.database import get_db
+from src.models.models import Transfer
 from src.services.lnd import LNDService
 from src.services.notification import NotificationService
 

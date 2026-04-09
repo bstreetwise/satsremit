@@ -18,7 +18,7 @@ class NotificationService:
         self.account_id = self.settings.whatsapp_business_account_id
         self.phone_number_id = self.settings.whatsapp_business_phone_number_id
         self.access_token = self.settings.whatsapp_business_access_token
-        self.api_url = "https://graph.instagram.com/v18.0"
+        self.api_url = "https://graph.facebook.com/v18.0"
 
     async def send_whatsapp(
         self,

@@ -10,12 +10,14 @@ import os
 from datetime import datetime, timedelta
 from typing import Dict, Any
 
+import asyncio
+
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from src.core.celery import app
-from src.core.database import get_db
-from src.models import Transfer
+from src.db.database import get_db
+from src.models.models import Transfer
 from src.services.transfer import TransferService
 from src.services.notification import NotificationService
 
@@ -97,31 +99,27 @@ def handle_verification_timeouts(self) -> Dict[str, Any]:
                     f"✅ Transfer {transfer.id} marked for refund"
                 )
                 
-                # Send notifications
+                # Send notifications (run async coroutines from sync Celery task)
                 try:
-                    # To receiver: verification expired, refund initiated
-                    notification_service.send_message_async(
+                    asyncio.run(notification_service.send_whatsapp(
                         phone_number=transfer.receiver_phone,
                         message=(
                             f"Verification timeout. Your payment of "
                             f"{transfer.amount_zar:.2f} ZAR will be refunded "
                             f"within 24 hours."
                         ),
-                        notification_type="verification_expired",
-                    )
-                    
-                    # To agent: refund needed
-                    notification_service.send_message_async(
-                        phone_number=transfer.agent_phone,
-                        message=(
-                            f"Refund required for transfer {transfer.id}: "
-                            f"{transfer.amount_zar:.2f} ZAR to {transfer.receiver_name}"
-                        ),
-                        notification_type="refund_required",
-                    )
-                    
-                    logger.info(f"📱 Notifications sent for transfer {transfer.id}")
-                
+                    ))
+                    # Notify agent via the agent relationship
+                    if transfer.agent and transfer.agent.phone:
+                        asyncio.run(notification_service.send_whatsapp(
+                            phone_number=transfer.agent.phone,
+                            message=(
+                                f"Refund required for transfer {transfer.id}: "
+                                f"{transfer.amount_zar:.2f} ZAR to {transfer.receiver_name}"
+                            ),
+                        ))
+                    logger.info(f"Notifications sent for transfer {transfer.id}")
+
                 except Exception as e:
                     logger.error(f"Failed to send notifications: {str(e)}")
                 
@@ -267,15 +265,16 @@ def resend_pin(self, transfer_id: str) -> Dict[str, Any]:
                 "error": "No PIN generated for this transfer",
             }
         
-        # Resend PIN
-        notification_service.send_message_async(
+        # Resend PIN — note: transfer.pin_generated is a bcrypt hash, not the
+        # plaintext PIN.  The plaintext is only available at generation time.
+        # This task can only re-notify that a PIN was sent; do not expose the hash.
+        asyncio.run(notification_service.send_whatsapp(
             phone_number=transfer.receiver_phone,
             message=(
-                f"Your verification PIN: {transfer.receiver_pin_code}\n"
-                f"Valid for {os.getenv('VERIFICATION_TIMEOUT_SECONDS', '1800')} seconds"
+                f"A verification PIN was sent for your transfer. "
+                f"If you didn't receive it, please contact support."
             ),
-            notification_type="pin_resend",
-        )
+        ))
         
         logger.info(f"📱 PIN resent to transfer {transfer_id}")
         

@@ -1,41 +1,22 @@
 """
 API Response Schemas - Request/Response validation
+
+Enums and the HealthCheckResponse/ErrorResponse types are imported from
+``src.models.schemas`` (the canonical schema module) to avoid duplication.
 """
 
 from pydantic import BaseModel, Field, field_validator
 from datetime import datetime
 from typing import Optional, List
 from decimal import Decimal
-from enum import Enum
 
-# ===== ENUMS =====
-
-class TransferStateEnum(str, Enum):
-    INITIATED = "INITIATED"
-    INVOICE_GENERATED = "INVOICE_GENERATED"
-    PAYMENT_LOCKED = "PAYMENT_LOCKED"
-    RECEIVER_VERIFIED = "RECEIVER_VERIFIED"
-    PAYOUT_EXECUTED = "PAYOUT_EXECUTED"
-    SETTLED = "SETTLED"
-    FINAL = "FINAL"
-    REFUNDED = "REFUNDED"
-
-
-class AgentStatusEnum(str, Enum):
-    ACTIVE = "ACTIVE"
-    INACTIVE = "INACTIVE"
-    SUSPENDED = "SUSPENDED"
-
-
-# ===== HEALTH CHECK =====
-
-class HealthCheckResponse(BaseModel):
-    status: str
-    bitcoind_synced: bool
-    lnd_active: bool
-    db_connected: bool
-    redis_connected: bool
-    timestamp: datetime
+# Import canonical enums and shared response types from the models schema module
+from src.models.schemas import (
+    TransferStateSchema as TransferStateEnum,
+    AgentStatusSchema as AgentStatusEnum,
+    HealthCheckResponse,
+    ErrorResponse,
+)
 
 
 # ===== TRANSFER SCHEMAS =====
@@ -49,7 +30,7 @@ class TransferCreateRequest(BaseModel):
 
     @field_validator('sender_phone', 'receiver_phone')
     def validate_phone(cls, v):
-        if not v.replaceall('+', '').replaceall('-', '').isdigit():
+        if not v.replace('+', '').replace('-', '').replace(' ', '').isdigit():
             raise ValueError('Invalid phone format')
         return v
 
@@ -258,10 +239,4 @@ class LNDInvoiceSettledResponse(BaseModel):
     message: str
 
 
-# ===== ERROR SCHEMAS =====
-
-class ErrorResponse(BaseModel):
-    error: str
-    code: str
-    timestamp: datetime
-    detail: Optional[str] = None
+# ErrorResponse is imported from src.models.schemas above

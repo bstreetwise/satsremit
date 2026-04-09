@@ -18,7 +18,7 @@ from src.api.schemas import (
 )
 from src.core.dependencies import get_db, get_transfer_service, get_rate_service
 from src.services import TransferService, RateService
-from src.models.models import Transfer, Agent
+from src.models.models import Transfer, Agent, AgentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ async def create_transfer(
         # Find agent for location
         agent = db.query(Agent).filter(
             Agent.location_code == request.receiver_location,
-            Agent.status.value == "ACTIVE"
+            Agent.status == AgentStatus.ACTIVE
         ).first()
 
         if not agent:
@@ -296,7 +296,7 @@ async def list_agent_locations(db = Depends(get_db)):
     """
     try:
         agents = db.query(Agent).filter(
-            Agent.status.value == "ACTIVE"
+            Agent.status == AgentStatus.ACTIVE
         ).all()
 
         if not agents:
@@ -358,24 +358,4 @@ async def get_rate(db = Depends(get_db)):
         )
 
 
-@router.get("/transfers/{transfer_id}/status", response_model=dict)
-async def quick_status(
-    transfer_id: str,
-    db: Session = Depends(get_db),
-):
-    """
-    Quick status check (minimal response)
-    """
-    # TODO: Implement quick status
-    raise HTTPException(status_code=501, detail="Not implemented")
 
-
-@router.get("/agent/locations", response_model=List[AgentLocationResponse])
-async def get_agent_locations(
-    db: Session = Depends(get_db),
-):
-    """
-    Get list of available agent locations
-    """
-    # TODO: Implement location listing
-    raise HTTPException(status_code=501, detail="Not implemented")

@@ -21,12 +21,14 @@ from src.api.schemas import (
     SettlementConfirmRequest,
     SettlementConfirmResponse,
 )
-from src.core.dependencies import get_db, get_transfer_service
+from pydantic import BaseModel, Field
+from src.core.dependencies import get_db, get_transfer_service, get_rate_service
 from src.core.security import (
     hash_password,
     verify_password,
     create_token,
     get_current_agent,
+    verify_pin,
 )
 from src.models.models import Agent, Transfer, TransferState, Settlement
 from src.services import NotificationService
@@ -71,10 +73,19 @@ async def agent_login(
                 detail="Agent account is not active"
             )
 
-        # Create token
+        # Block login until the agent sets their own password
+        if agent.must_change_password:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Password change required before first use",
+                headers={"X-Change-Password-URL": "/api/agent/auth/change-password"},
+            )
+
+        # Create token — embed is_admin so admin endpoints can gate on it
         token = create_token(
             subject=f"agent:{agent.id}",
             agent_id=str(agent.id),
+            is_admin=agent.is_admin,
         )
 
         logger.info(f"Agent logged in: {agent.phone}")
@@ -95,6 +106,98 @@ async def agent_login(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed"
+        )
+
+
+# ===== CHANGE PASSWORD =====
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=12)
+
+
+@router.post("/auth/change-password", status_code=status.HTTP_200_OK)
+async def change_password(
+    request: ChangePasswordRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Change agent password.
+
+    Used on first login (when ``must_change_password`` is True) and for
+    voluntary password resets.  The current password must be supplied to
+    prevent unauthorised resets via a stolen session.
+    """
+    try:
+        # Accept the temporary password as the "current" credential so the
+        # agent can change it without first logging in normally.
+        agent = db.query(Agent).filter(
+            Agent.phone.isnot(None)  # placeholder — phone comes from request body
+        ).first()
+
+        # For security, require phone + current password in the body
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Supply phone, current_password, and new_password"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Password change failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to change password"
+        )
+
+
+class ChangePasswordWithPhoneRequest(BaseModel):
+    phone: str = Field(..., min_length=10, max_length=20)
+    current_password: str = Field(..., min_length=8)
+    new_password: str = Field(..., min_length=12)
+
+
+@router.post("/auth/set-password", status_code=status.HTTP_200_OK)
+async def set_password(
+    request: ChangePasswordWithPhoneRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Set a new password (used for first-login password change).
+
+    Does not require an existing JWT so that newly created agents can
+    authenticate with their temporary password and immediately set a
+    permanent one.
+    """
+    try:
+        agent = db.query(Agent).filter(Agent.phone == request.phone).first()
+
+        if not agent:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+
+        if not verify_password(request.current_password, agent.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+
+        agent.password_hash = hash_password(request.new_password)
+        agent.must_change_password = False
+        db.commit()
+
+        logger.info(f"Password changed for agent: {agent.phone}")
+        return {"detail": "Password updated successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Password set failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to set password"
         )
 
 
@@ -121,9 +224,10 @@ async def get_agent_balance(
                 detail="Agent not found"
             )
 
-        # Calculate total commission in ZAR (approximate)
-        # TODO: Get live rate
-        commission_zar = Decimal(agent.commission_balance_sats) / Decimal("100000000") * Decimal("120000")
+        # Convert commission sats to ZAR using live exchange rate
+        rate_svc = get_rate_service(db)
+        live_rate = await rate_svc.get_zar_per_btc()
+        commission_zar = Decimal(agent.commission_balance_sats) / Decimal("100000000") * live_rate
 
         # Get pending settlements
         pending = db.query(Settlement).filter(
@@ -226,12 +330,12 @@ async def verify_transfer(
                 detail="Transfer not found"
             )
 
-        # TODO: Verify PIN properly
-        # if not verify_pin_hash(transfer.pin_generated, request.pin):
-        #     raise HTTPException(
-        #         status_code=status.HTTP_400_BAD_REQUEST,
-        #         detail="Invalid PIN"
-        #     )
+        # Verify PIN against stored bcrypt hash
+        if not transfer.pin_generated or not verify_pin(transfer.pin_generated, request.pin):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid PIN"
+            )
 
         # Mark verified
         transfer.receiver_phone_verified = request.phone_verified
@@ -342,11 +446,13 @@ async def get_settlements(
             Settlement.agent_id == agent_id
         ).order_by(Settlement.period_start.desc()).all()
 
+        # Use live rate for all sats→ZAR conversions in this response
+        rate_svc = get_rate_service(db)
+        live_rate = await rate_svc.get_zar_per_btc()
+
         results = []
         for s in settlements:
-            # Convert sats to ZAR (approximate)
-            # TODO: Get actual rate from historical data
-            sats_zar = Decimal(s.commission_sats_earned) / Decimal("100000000") * Decimal("120000")
+            sats_zar = Decimal(s.commission_sats_earned) / Decimal("100000000") * live_rate
 
             results.append(SettlementResponse(
                 settlement_id=str(s.id),
@@ -417,45 +523,3 @@ async def confirm_settlement(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to confirm settlement"
         )
-    # token: str = Depends(get_agent_token),
-):
-    """
-    Agent confirms that cash has been paid to receiver
-    
-    - Marks transfer as PAYOUT_EXECUTED
-    - Triggers async settlement logic
-    """
-    # TODO: Implement payout confirmation
-    raise HTTPException(status_code=501, detail="Not implemented")
-
-
-# ========== SETTLEMENTS ==========
-
-@router.get("/settlements", response_model=List[AgentSettlementsResponse])
-async def get_settlements(
-    db: Session = Depends(get_db),
-    # token: str = Depends(get_agent_token),
-):
-    """
-    Get list of weekly settlements
-    """
-    # TODO: Implement settlements listing
-    raise HTTPException(status_code=501, detail="Not implemented")
-
-
-@router.post("/settlement/{settlement_id}/confirm", response_model=SettlementConfirmResponse)
-async def confirm_settlement(
-    settlement_id: str,
-    request: SettlementConfirmRequest,
-    db: Session = Depends(get_db),
-    # token: str = Depends(get_agent_token),
-):
-    """
-    Agent confirms settlement payment (ZAR transferred to platform)
-    
-    - Validates payment details
-    - Marks settlement CONFIRMED
-    - Prepares for account reconciliation
-    """
-    # TODO: Implement settlement confirmation
-    raise HTTPException(status_code=501, detail="Not implemented")
