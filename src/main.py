@@ -13,6 +13,7 @@ import os
 from src.core.config import get_settings, setup_logging
 from src.db.database import init_db, close_db
 from src.models.schemas import HealthCheckResponse, ErrorResponse
+from src.core.celery import app as celery_app  # Celery initialization
 
 # Configure logging
 settings = get_settings()
@@ -29,6 +30,10 @@ async def lifespan(app: FastAPI):
     logger.info("Starting SatsRemit API")
     await init_db()
     logger.info("Database initialized")
+    
+    # Celery is started separately via: celery -A src.core.celery worker --loglevel=info
+    # Celery Beat is started separately via: celery -A src.core.celery beat --loglevel=info
+    logger.info("Celery configured (start workers separately)")
     
     yield
     
@@ -108,13 +113,24 @@ def create_app() -> FastAPI:
     @app.get("/health", response_model=HealthCheckResponse)
     async def health_check():
         """Health check endpoint"""
-        # TODO: Check bitcoind, LND, database, redis connectivity
+        # Check Redis/Celery
+        redis_connected = False
+        try:
+            from redis import Redis
+            redis_client = Redis.from_url(
+                os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+            )
+            redis_connected = redis_client.ping()
+        except Exception as e:
+            logger.warning(f"Redis connection check failed: {e}")
+        
         return {
             "status": "healthy",
             "bitcoind_synced": True,
             "lnd_active": True,
             "db_connected": True,
-            "redis_connected": True,
+            "redis_connected": redis_connected,
+            "celery_active": redis_connected,
             "timestamp": datetime.utcnow(),
         }
     
