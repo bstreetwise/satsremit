@@ -143,8 +143,8 @@ def create_app() -> FastAPI:
     app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
     
     # Webhook routes
-    # from src.api.routes import webhooks
-    # app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])
+    from src.api.routes import webhooks
+    app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])
     
     logger.info(f"FastAPI application created (environment: {settings.environment})")
     
