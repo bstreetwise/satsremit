@@ -85,8 +85,30 @@ BITCOIN_VERSION="26.0"
 BITCOIN_URL="https://bitcoincore.org/bin/bitcoin-core-${BITCOIN_VERSION}/bitcoin-${BITCOIN_VERSION}-x86_64-linux-gnu.tar.gz"
 
 echo "Downloading Bitcoin Core ${BITCOIN_VERSION}..."
-wget -O /tmp/bitcoin-${BITCOIN_VERSION}.tar.gz "$BITCOIN_URL" 2>&1 | tail -1
+# Retry download with timeout
+for attempt in 1 2 3; do
+    echo "Download attempt $attempt/3..."
+    if wget --timeout=60 -O /tmp/bitcoin-${BITCOIN_VERSION}.tar.gz "$BITCOIN_URL"; then
+        if tar -tzf /tmp/bitcoin-${BITCOIN_VERSION}.tar.gz > /dev/null 2>&1; then
+            echo "✓ Download verified successfully"
+            break
+        else
+            echo "✗ Corrupted download, retrying..."
+            rm -f /tmp/bitcoin-${BITCOIN_VERSION}.tar.gz
+            if [ $attempt -eq 3 ]; then
+                echo -e "${RED}Download failed after 3 attempts${NC}"
+                exit 1
+            fi
+        fi
+    else
+        if [ $attempt -eq 3 ]; then
+            echo -e "${RED}Download failed after 3 attempts${NC}"
+            exit 1
+        fi
+    fi
+done
 
+$SUDO mkdir -p /opt
 $SUDO tar -xzf /tmp/bitcoin-${BITCOIN_VERSION}.tar.gz -C /opt/
 $SUDO mv /opt/bitcoin-${BITCOIN_VERSION} /opt/bitcoin
 $SUDO chown -R bitcoin:bitcoin /opt/bitcoin
@@ -164,11 +186,86 @@ LND_VERSION="0.18.4"
 LND_URL="https://github.com/lightningnetwork/lnd/releases/download/v${LND_VERSION}/lnd-linux-amd64-v${LND_VERSION}.tar.gz"
 
 echo "Downloading LND v${LND_VERSION}..."
-wget -O /tmp/lnd-${LND_VERSION}.tar.gz "$LND_URL" 2>&1 | tail -1
+# Retry download with multiple methods
+DOWNLOAD_SUCCESS=0
 
-$SUDO tar -xzf /tmp/lnd-${LND_VERSION}.tar.gz -C /opt/
+for attempt in 1 2 3; do
+    echo "Download attempt $attempt/3..."
+    rm -f /tmp/lnd-${LND_VERSION}.tar.gz
+    
+    # Try wget first
+    if wget --timeout=120 --tries=2 -O /tmp/lnd-${LND_VERSION}.tar.gz "$LND_URL" 2>/dev/null; then
+        # Verify file integrity
+        FILE_SIZE=$(stat -f%z /tmp/lnd-${LND_VERSION}.tar.gz 2>/dev/null || stat --printf="%s" /tmp/lnd-${LND_VERSION}.tar.gz 2>/dev/null || echo 0)
+        if [ "$FILE_SIZE" -gt 1000000 ]; then  # At least 1MB
+            if tar -tzf /tmp/lnd-${LND_VERSION}.tar.gz > /dev/null 2>&1; then
+                echo "✓ Download verified successfully (Size: $FILE_SIZE bytes)"
+                DOWNLOAD_SUCCESS=1
+                break
+            fi
+        fi
+    fi
+    
+    # Try curl as fallback
+    if [ $DOWNLOAD_SUCCESS -eq 0 ] && command -v curl &> /dev/null; then
+        echo "Retrying with curl..."
+        if curl -fL --max-time 120 -o /tmp/lnd-${LND_VERSION}.tar.gz "$LND_URL" 2>/dev/null; then
+            FILE_SIZE=$(stat -f%z /tmp/lnd-${LND_VERSION}.tar.gz 2>/dev/null || stat --printf="%s" /tmp/lnd-${LND_VERSION}.tar.gz 2>/dev/null || echo 0)
+            if [ "$FILE_SIZE" -gt 1000000 ]; then  # At least 1MB
+                if tar -tzf /tmp/lnd-${LND_VERSION}.tar.gz > /dev/null 2>&1; then
+                    echo "✓ Download verified successfully (Size: $FILE_SIZE bytes)"
+                    DOWNLOAD_SUCCESS=1
+                    break
+                fi
+            fi
+        fi
+    fi
+    
+    if [ $attempt -lt 3 ]; then
+        echo "✗ Download failed, retrying in 5 seconds..."
+        sleep 5
+    fi
+done
+
+if [ $DOWNLOAD_SUCCESS -eq 0 ]; then
+    echo -e "${RED}✗ LND download failed after 3 attempts${NC}"
+    echo ""
+    echo -e "${YELLOW}MANUAL FALLBACK: Download and copy LND manually:${NC}"
+    echo "  1. On your local machine, download:"
+    echo "     curl -fL -o /tmp/lnd.tar.gz https://github.com/lightningnetwork/lnd/releases/download/v${LND_VERSION}/lnd-linux-amd64-v${LND_VERSION}.tar.gz"
+    echo ""
+    echo "  2. Then copy to VPS:"
+    echo "     scp /tmp/lnd.tar.gz ubuntu@vm-1327.lnvps.cloud:/tmp/"
+    echo ""
+    echo "  3. Extract on VPS:"
+    echo "     sudo mkdir -p /opt/lnd-extract"
+    echo "     sudo tar -xzf /tmp/lnd.tar.gz -C /opt/lnd-extract/"
+    echo "     sudo mkdir -p /opt/lnd"
+    echo "     sudo cp /opt/lnd-extract/lnd /opt/lnd/"
+    echo "     sudo cp /opt/lnd-extract/lncli /opt/lnd/"
+    echo "     sudo chown -R bitcoin:bitcoin /opt/lnd"
+    echo "     sudo chmod +x /opt/lnd/*"
+    echo "     sudo ln -sf /opt/lnd/lnd /usr/local/bin/lnd"
+    echo "     sudo ln -sf /opt/lnd/lncli /usr/local/bin/lncli"
+    echo ""
+    exit 1
+fi
+
+$SUDO mkdir -p /opt/lnd-extract
+$SUDO tar -xzf /tmp/lnd-${LND_VERSION}.tar.gz -C /opt/lnd-extract/
 $SUDO mkdir -p /opt/lnd
-$SUDO mv /opt/lnd-linux-amd64-v${LND_VERSION}/* /opt/lnd/
+
+# Handle both extraction formats (direct files or nested directory)
+if [ -f /opt/lnd-extract/lnd ]; then
+    $SUDO cp /opt/lnd-extract/lnd /opt/lnd/
+    $SUDO cp /opt/lnd-extract/lncli /opt/lnd/
+else
+    # Extract from nested directory (lnd-linux-amd64-v0.18.4-beta/)
+    $SUDO cp /opt/lnd-extract/lnd-linux-amd64-*/lnd /opt/lnd/
+    $SUDO cp /opt/lnd-extract/lnd-linux-amd64-*/lncli /opt/lnd/
+fi
+
+$SUDO rm -rf /opt/lnd-extract
 $SUDO chown -R bitcoin:bitcoin /opt/lnd
 $SUDO chmod +x /opt/lnd/*
 

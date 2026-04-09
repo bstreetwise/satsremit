@@ -23,7 +23,7 @@
 | Database | PostgreSQL (self-hosted) | Free | Basic replication Phase 2 |
 | Backend | Python FastAPI | Free | Async, extensible |
 | Task Queue | Celery + Redis | Free | For async payout processing |
-| Notifications | Africa's Talking (SMS/USSD) | $5-10/mo | SMS: ~$0.002/msg, local Africa coverage |
+| Notifications | WhatsApp Business API | $0/mo | WhatsApp: unlimited free messages to opted-in users |
 | KYC/AML | OpenNode/Coinbase Commerce | $0-100/mo | Phase 2+ (risk-based) |
 | Domain | Custom + SSL | ~$1/mo | Let's Encrypt (free cert) |
 | **Total Phase 1** | | **~$30-40/mo** | **Major cost reduction from Twilio** |
@@ -255,7 +255,7 @@ Handler:
 ### 6.1 Dual Verification Flow
 
 ```
-Receiver Gets Notification via Africa's Talking SMS:
+Receiver Gets Notification via WhatsApp:
 ┌────────────────────────────┐
 │ SatsRemit Transfer         │
 │ PIN: 1234                  │
@@ -555,7 +555,7 @@ RATE_BTC_ZAR=SOURCE=coingecko|kraken  # external rate source
 - [ ] Hold invoices + basic webhooks
 - [ ] Manual weekly settlements
 - [ ] No KYC (accept risk; low volume)
-- [ ] Notifications via Africa's Talking SMS
+- [ ] Notifications via WhatsApp Business API
 
 ### Phase 2: Scaling (6-8 weeks)
 - [ ] Multi-agent support

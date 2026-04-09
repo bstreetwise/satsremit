@@ -37,10 +37,10 @@ class Settings(BaseSettings):
     bitcoin_rpc_user: str = "bitcoin"
     bitcoin_rpc_password: str = "password"
     
-    # Africa's Talking
-    africas_talking_api_key: str
-    africas_talking_username: str
-    africas_talking_shortcode: str = None  # Optional sender ID
+    # WhatsApp Business API
+    whatsapp_business_account_id: str
+    whatsapp_business_phone_number_id: str
+    whatsapp_business_access_token: str
     
     # Rate feeds
     rate_source: str = "coingecko"
@@ -77,9 +77,9 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = False
         fields = {
-            "africas_talking_api_key": {"env": "AFRICAS_TALKING_API_KEY"},
-            "africas_talking_username": {"env": "AFRICAS_TALKING_USERNAME"},
-            "africas_talking_shortcode": {"env": "AFRICAS_TALKING_SHORTCODE"},
+            "whatsapp_business_account_id": {"env": "WHATSAPP_BUSINESS_ACCOUNT_ID"},
+            "whatsapp_business_phone_number_id": {"env": "WHATSAPP_BUSINESS_PHONE_NUMBER_ID"},
+            "whatsapp_business_access_token": {"env": "WHATSAPP_BUSINESS_ACCESS_TOKEN"},
         }
     
     @property

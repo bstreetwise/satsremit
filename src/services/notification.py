@@ -1,8 +1,9 @@
 """
-Notification service using Africa's Talking SMS
+Notification service using WhatsApp Business API
 """
-import httpx
+
 import logging
+import httpx
 from typing import Optional
 from src.core.config import get_settings
 
@@ -10,109 +11,100 @@ logger = logging.getLogger(__name__)
 
 
 class NotificationService:
-    """Send notifications via Africa's Talking SMS API"""
-    
-    BASE_URL = "https://api.sandbox.africastalking.com/version1/messaging"
-    
+    """Send notifications via WhatsApp Business API"""
+
     def __init__(self):
         self.settings = get_settings()
-        self.api_key = self.settings.africas_talking_api_key
-        self.username = self.settings.africas_talking_username
-        self.shortcode = self.settings.africas_talking_shortcode
-    
-    async def send_sms(
+        self.account_id = self.settings.whatsapp_business_account_id
+        self.phone_number_id = self.settings.whatsapp_business_phone_number_id
+        self.access_token = self.settings.whatsapp_business_access_token
+        self.api_url = "https://graph.instagram.com/v18.0"
+
+    async def send_whatsapp(
         self,
         phone_number: str,
         message: str,
-        sender_id: Optional[str] = None,
-    ) -> bool:
+        message_type: str = "text",
+    ) -> Optional[dict]:
         """
-        Send SMS via Africa's Talking
-        
+        Send WhatsApp message via WhatsApp Business API
+
         Args:
-            phone_number: Recipient phone (e.g., +263712345678)
-            message: SMS message text
-            sender_id: Custom sender ID or shortcode (optional)
-        
+            phone_number: Recipient phone in E.164 format (e.g., "+263123456789")
+            message: Message content
+            message_type: Type of message ("text")
+
         Returns:
-            True if delivery successful, False otherwise
+            Response data or None if failed
         """
         try:
-            sender = sender_id or self.shortcode or self.username
-            
+            url = f"{self.api_url}/{self.phone_number_id}/messages"
+
             headers = {
-                "ApiKey": self.api_key,
-                "Accept": "application/json",
-                "Content-Type": "application/x-www-form-urlencoded",
+                "Authorization": f"Bearer {self.access_token}",
+                "Content-Type": "application/json",
             }
-            
+
+            # Ensure phone is in E.164 format
+            recipient = phone_number.replace("+", "") if phone_number.startswith("+") else phone_number
+
             payload = {
-                "username": self.username,
-                "to": phone_number,
-                "message": message,
-                "from": sender,
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": recipient,
+                "type": "text",
+                "text": {"body": message},
             }
-            
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.BASE_URL}/send",
-                    data=payload,
-                    headers=headers,
-                    timeout=10,
-                )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    # Check Africa's Talking response
-                    if result.get("SMSMessageData", {}).get("Message") == "Sent":
-                        logger.info(f"SMS sent to {phone_number}")
-                        return True
-                    else:
-                        logger.error(
-                            f"SMS delivery failed for {phone_number}: "
-                            f"{result.get('SMSMessageData', {}).get('Message')}"
-                        )
-                        return False
+
+            async with httpx.AsyncClient(timeout=10) as client:
+                response = await client.post(url, json=payload, headers=headers)
+
+                if response.status_code in [200, 201]:
+                    logger.info(f"WhatsApp message sent to {phone_number}")
+                    return response.json()
                 else:
+                    error_msg = response.text
                     logger.error(
-                        f"Africa's Talking API error {response.status_code}: "
-                        f"{response.text}"
+                        f"WhatsApp API error {response.status_code}: {error_msg}"
                     )
-                    return False
-        
+                    return None
+
+        except httpx.RequestError as e:
+            logger.error(f"WhatsApp request failed: {str(e)}")
+            return None
         except Exception as e:
-            logger.error(f"Failed to send SMS to {phone_number}: {str(e)}")
-            return False
-    
+            logger.error(f"Unexpected error sending WhatsApp message: {str(e)}")
+            return None
+
     async def send_pin_to_receiver(
-        self,
-        phone_number: str,
-        pin: str,
-        transfer_reference: str,
-        amount_zar: float,
+        self, phone_number: str, pin: str, transfer_reference: str, amount_zar: float = None
     ) -> bool:
         """
-        Send PIN notification to receiver
-        
+        Send verification PIN to receiver via WhatsApp
+
         Args:
-            phone_number: Receiver phone
-            pin: 4-digit PIN
-            transfer_reference: Transfer reference (e.g., REF-XXXXX)
-            amount_zar: Amount in ZAR
-        
+            phone_number: Receiver's phone
+            pin: 4-digit verification PIN
+            transfer_reference: Transfer reference ID
+            amount_zar: Amount in ZAR (optional)
+
         Returns:
-            True if delivery successful
+            True if sent successfully
         """
-        message = (
-            f"SatsRemit Transfer\n"
-            f"PIN: {pin}\n"
-            f"Amount: {amount_zar:.2f} ZAR\n"
-            f"Ref: {transfer_reference}\n"
-            f"Valid for 5 minutes"
-        )
+        amount_text = f"\nAmount: ZAR {amount_zar:.2f}" if amount_zar else ""
         
-        return await self.send_sms(phone_number, message)
-    
+        message = (
+            f"🎉 *SatsRemit Transfer Received*\n\n"
+            f"Reference: {transfer_reference}\n"
+            f"Verification PIN: {pin}{amount_text}\n\n"
+            f"*Valid for 5 minutes*\n"
+            f"Enter this PIN in the SatsRemit app to confirm payment.\n\n"
+            f"If you didn't expect this, please contact support."
+        )
+
+        result = await self.send_whatsapp(phone_number, message)
+        return result is not None
+
     async def notify_agent_pending_transfer(
         self,
         agent_phone: str,
@@ -121,55 +113,95 @@ class NotificationService:
         amount_zar: float,
     ) -> bool:
         """
-        Alert agent of pending transfer verification
-        
+        Notify agent of pending transfer awaiting verification
+
         Args:
-            agent_phone: Agent phone number
+            agent_phone: Agent's phone number
             transfer_reference: Transfer reference
-            receiver_name: Receiver name
+            receiver_name: Name of receiver
             amount_zar: Amount in ZAR
-        
+
         Returns:
-            True if delivery successful
+            True if sent successfully
         """
         message = (
-            f"New Transfer Alert\n"
-            f"Ref: {transfer_reference}\n"
-            f"To: {receiver_name}\n"
-            f"Amount: {amount_zar:.2f} ZAR\n"
-            f"Action: Verify receiver"
+            f"📢 *New Transfer Alert*\n\n"
+            f"Reference: {transfer_reference}\n"
+            f"Receiver: {receiver_name}\n"
+            f"Amount: ZAR {amount_zar:.2f}\n\n"
+            f"Please verify the receiver and process payment.\n"
+            f"Check SatsRemit dashboard for details."
         )
-        
-        return await self.send_sms(agent_phone, message)
-    
+
+        result = await self.send_whatsapp(agent_phone, message)
+        return result is not None
+
     async def notify_sender_completion(
         self,
         sender_phone: str,
         transfer_reference: str,
         receiver_name: str,
         amount_zar: float,
+        status: str = "completed",
     ) -> bool:
         """
         Notify sender that transfer is complete
-        
+
         Args:
-            sender_phone: Sender phone number
-            transfer_reference: Transfer reference
-            receiver_name: Receiver name
-            amount_zar: Amount in ZAR
-        
+            sender_phone: Sender's phone number
+            transfer_reference: Transfer reference ID
+            receiver_name: Name of receiver
+            amount_zar: Amount transferred
+            status: Transfer status (completed, failed, etc.)
+
         Returns:
-            True if delivery successful
+            True if sent successfully
         """
+        status_emoji = "✅" if status == "completed" else "❌"
+
         message = (
-            f"Transfer Complete\n"
-            f"Ref: {transfer_reference}\n"
-            f"To: {receiver_name}\n"
-            f"Amount: {amount_zar:.2f} ZAR\n"
-            f"Status: Funds delivered"
+            f"{status_emoji} *Transfer {status.title()}*\n\n"
+            f"Receiver: {receiver_name}\n"
+            f"Amount: ZAR {amount_zar:.2f}\n"
+            f"Reference: {transfer_reference}\n\n"
         )
-        
-        return await self.send_sms(sender_phone, message)
+
+        if status == "completed":
+            message += "Payment has been delivered successfully!"
+        else:
+            message += (
+                "We encountered an issue processing this transfer.\n"
+                "Please contact support for assistance."
+            )
+
+        result = await self.send_whatsapp(sender_phone, message)
+        return result is not None
+
+    async def send_admin_alert(
+        self, admin_phone: str, alert_type: str, details: str
+    ) -> bool:
+        """
+        Send admin alert notification
+
+        Args:
+            admin_phone: Admin's phone number
+            alert_type: Type of alert (error, warning, info)
+            details: Alert details
+
+        Returns:
+            True if sent successfully
+        """
+        emoji_map = {
+            "error": "🚨",
+            "warning": "⚠️",
+            "info": "ℹ️",
+        }
+        emoji = emoji_map.get(alert_type.lower(), "ℹ️")
+
+        message = f"{emoji} *Admin Alert: {alert_type.upper()}*\n\n{details}"
+
+        result = await self.send_whatsapp(admin_phone, message)
+        return result is not None
 
 
 # Singleton instance

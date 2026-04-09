@@ -128,19 +128,19 @@ def create_app() -> FastAPI:
             "docs": "/api/docs" if not settings.is_production else None,
         }
     
-    # ========== ROUTE IMPORTS (to be implemented) ==========
+    # ========== ROUTE IMPORTS ==========
     
     # Public routes
-    # from src.api.routes import public
-    # app.include_router(public.router, prefix="/api", tags=["public"])
+    from src.api.routes import public
+    app.include_router(public.router, prefix="/api", tags=["public"])
     
     # Agent routes
-    # from src.api.routes import agent
-    # app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
+    from src.api.routes import agent
+    app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
     
     # Admin routes
-    # from src.api.routes import admin
-    # app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+    from src.api.routes import admin
+    app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
     
     # Webhook routes
     # from src.api.routes import webhooks

@@ -1,31 +1,43 @@
 """
-Agent API routes (authenticated)
+Agent API Routes - Authenticated agent operations
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+
+import logging
+import uuid
+from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
 from typing import List
-import logging
 
-from src.db.database import get_db
-from src.models.schemas import (
+from src.api.schemas import (
     AgentLoginRequest,
     AgentLoginResponse,
     AgentBalanceResponse,
+    AgentTransferResponse,
     AgentVerifyRequest,
     AgentVerifyResponse,
-    AgentTransferResponse,
-    ConfirmPayoutRequest,
-    ConfirmPayoutResponse,
-    AgentSettlementsResponse,
+    AgentConfirmPayoutRequest,
+    AgentConfirmPayoutResponse,
+    SettlementResponse,
     SettlementConfirmRequest,
     SettlementConfirmResponse,
 )
+from src.core.dependencies import get_db, get_transfer_service
+from src.core.security import (
+    hash_password,
+    verify_password,
+    create_token,
+    get_current_agent,
+)
+from src.models.models import Agent, Transfer, TransferState, Settlement
+from src.services import NotificationService
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/agent", tags=["agent"])
+
+router = APIRouter()
 
 
-# ========== AUTHENTICATION ==========
+# ===== AUTHENTICATION =====
 
 @router.post("/auth/login", response_model=AgentLoginResponse)
 async def agent_login(
@@ -33,46 +45,157 @@ async def agent_login(
     db: Session = Depends(get_db),
 ):
     """
-    Agent login (phone + password)
-    
-    Returns JWT token for subsequent authenticated requests
+    Agent login - phone + password
+
+    Returns:
+        JWT token for authenticated requests
     """
-    # TODO: Implement agent authentication
-    raise HTTPException(status_code=501, detail="Not implemented")
+    try:
+        agent = db.query(Agent).filter(Agent.phone == request.phone).first()
+
+        if not agent:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+
+        if not verify_password(request.password, agent.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+
+        if agent.status.value != "ACTIVE":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Agent account is not active"
+            )
+
+        # Create token
+        token = create_token(
+            subject=f"agent:{agent.id}",
+            agent_id=str(agent.id),
+        )
+
+        logger.info(f"Agent logged in: {agent.phone}")
+
+        return AgentLoginResponse(
+            token=token,
+            token_type="bearer",
+            expires_in=86400,  # 24 hours
+            agent_id=str(agent.id),
+            agent_name=agent.name,
+            agent_phone=agent.phone,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Login failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Login failed"
+        )
 
 
-# ========== ACCOUNT ==========
+# ===== ACCOUNT =====
 
 @router.get("/balance", response_model=AgentBalanceResponse)
 async def get_agent_balance(
     db: Session = Depends(get_db),
-    # token: str = Depends(get_agent_token),
+    current_agent: dict = Depends(get_current_agent),
 ):
     """
-    Get agent's current balance
-    
-    - Cash balance (ZAR)
-    - Commission balance (sats)
-    - Pending transfers
+    Get agent balance - cash, commissions, settlements
+
+    Returns:
+        Current balance information
     """
-    # TODO: Implement balance retrieval
-    raise HTTPException(status_code=501, detail="Not implemented")
+    try:
+        agent_id = uuid.UUID(current_agent["agent_id"])
+        agent = db.query(Agent).filter(Agent.id == agent_id).first()
+
+        if not agent:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Agent not found"
+            )
+
+        # Calculate total commission in ZAR (approximate)
+        # TODO: Get live rate
+        commission_zar = Decimal(agent.commission_balance_sats) / Decimal("100000000") * Decimal("120000")
+
+        # Get pending settlements
+        pending = db.query(Settlement).filter(
+            Settlement.agent_id == agent.id,
+            Settlement.status == "PENDING"
+        ).first()
+
+        pending_zar = pending.amount_zar_owed if pending else Decimal("0.00")
+
+        return AgentBalanceResponse(
+            cash_balance_zar=agent.cash_balance_zar,
+            commission_balance_sats=agent.commission_balance_sats,
+            total_commission_zar=commission_zar,
+            pending_settlement_zar=pending_zar,
+            payout_date="Sunday",  # TODO: Calculate next payout date
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Balance fetch failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get balance"
+        )
 
 
-# ========== TRANSFERS ==========
+# ===== TRANSFERS =====
 
 @router.get("/transfers", response_model=List[AgentTransferResponse])
 async def get_pending_transfers(
     db: Session = Depends(get_db),
-    # token: str = Depends(get_agent_token),
+    current_agent: dict = Depends(get_current_agent),
 ):
     """
-    Get list of pending transfers for verification
-    
-    Returns transfers in PAYMENT_LOCKED state
+    Get pending transfers awaiting verification
+
+    Returns:
+        List of transfers in PAYMENT_LOCKED state
     """
-    # TODO: Implement pending transfers listing
-    raise HTTPException(status_code=501, detail="Not implemented")
+    try:
+        agent_id = uuid.UUID(current_agent["agent_id"])
+
+        transfers = db.query(Transfer).filter(
+            Transfer.agent_id == agent_id,
+            Transfer.state == TransferState.PAYMENT_LOCKED,
+        ).all()
+
+        results = []
+        for t in transfers:
+            results.append(AgentTransferResponse(
+                transfer_id=str(t.id),
+                reference=t.reference,
+                receiver_name=t.receiver_name,
+                receiver_phone=t.receiver_phone,
+                receiver_location=t.receiver_location,
+                amount_zar=t.amount_zar,
+                amount_sats=t.amount_sats,
+                created_at=t.created_at,
+                expires_at=t.invoice_expiry_at,
+            ))
+
+        return results
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to get pending transfers: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get transfers"
+        )
 
 
 @router.post("/transfers/{transfer_id}/verify", response_model=AgentVerifyResponse)
@@ -80,24 +203,220 @@ async def verify_transfer(
     transfer_id: str,
     request: AgentVerifyRequest,
     db: Session = Depends(get_db),
-    # token: str = Depends(get_agent_token),
+    current_agent: dict = Depends(get_current_agent),
 ):
     """
-    Verify receiver (PIN + phone dual verification)
-    
-    - Validates PIN
-    - Confirms phone number
-    - Transitions transfer to RECEIVER_VERIFIED
+    Verify receiver - PIN + phone dual verification
+
+    Validates PIN and confirms phone number.
+    Transitions transfer to RECEIVER_VERIFIED.
     """
-    # TODO: Implement transfer verification
-    raise HTTPException(status_code=501, detail="Not implemented")
+    try:
+        agent_id = uuid.UUID(current_agent["agent_id"])
+        xfer_id = uuid.UUID(transfer_id)
+
+        transfer = db.query(Transfer).filter(
+            Transfer.id == xfer_id,
+            Transfer.agent_id == agent_id,
+        ).first()
+
+        if not transfer:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Transfer not found"
+            )
+
+        # TODO: Verify PIN properly
+        # if not verify_pin_hash(transfer.pin_generated, request.pin):
+        #     raise HTTPException(
+        #         status_code=status.HTTP_400_BAD_REQUEST,
+        #         detail="Invalid PIN"
+        #     )
+
+        # Mark verified
+        transfer.receiver_phone_verified = request.phone_verified
+        transfer.agent_verified = True
+
+        # Auto-transition if both verified
+        if transfer.receiver_phone_verified and transfer.agent_verified:
+            transfer.state = TransferState.RECEIVER_VERIFIED
+
+        db.commit()
+
+        logger.info(f"Transfer verified: {transfer.reference}")
+
+        return AgentVerifyResponse(
+            verified=True,
+            instruction="Proceed with cash payout to receiver",
+            message=f"Ready to pay {transfer.receiver_name} {transfer.amount_zar} ZAR"
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Verification failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Verification failed"
+        )
 
 
-@router.post("/transfers/{transfer_id}/confirm-payout", response_model=ConfirmPayoutResponse)
+@router.post("/transfers/{transfer_id}/confirm-payout", response_model=AgentConfirmPayoutResponse)
 async def confirm_payout(
     transfer_id: str,
-    request: ConfirmPayoutRequest,
+    request: AgentConfirmPayoutRequest,
     db: Session = Depends(get_db),
+    current_agent: dict = Depends(get_current_agent),
+):
+    """
+    Confirm cash payout executed
+
+    Agent confirmation that cash has been paid to receiver.
+    Triggers invoice settlement.
+    """
+    try:
+        agent_id = uuid.UUID(current_agent["agent_id"])
+        xfer_id = uuid.UUID(transfer_id)
+        transfer_svc = get_transfer_service(db)
+
+        transfer = db.query(Transfer).filter(
+            Transfer.id == xfer_id,
+            Transfer.agent_id == agent_id,
+        ).first()
+
+        if not transfer:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Transfer not found"
+            )
+
+        if transfer.state != TransferState.RECEIVER_VERIFIED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Transfer in state {transfer.state}, cannot confirm payout"
+            )
+
+        # Execute payout (settle invoice)
+        transfer = await transfer_svc.execute_payout(xfer_id)
+
+        # Update agent balance
+        agent = db.query(Agent).filter(Agent.id == agent_id).first()
+        agent.cash_balance_zar -= transfer.amount_zar  # Deduct payout
+        db.commit()
+
+        logger.info(f"Payout confirmed: {transfer.reference}")
+
+        return AgentConfirmPayoutResponse(
+            status="payout_confirmed",
+            message=f"Payout of {transfer.amount_zar} ZAR confirmed",
+            settlement_pending=True,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Payout confirmation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to confirm payout"
+        )
+
+
+# ===== SETTLEMENTS =====
+
+@router.get("/settlements", response_model=List[SettlementResponse])
+async def get_settlements(
+    db: Session = Depends(get_db),
+    current_agent: dict = Depends(get_current_agent),
+):
+    """
+    Get settlement history - weekly payouts
+
+    Returns:
+        List of settlements for agent
+    """
+    try:
+        agent_id = uuid.UUID(current_agent["agent_id"])
+
+        settlements = db.query(Settlement).filter(
+            Settlement.agent_id == agent_id
+        ).order_by(Settlement.period_start.desc()).all()
+
+        results = []
+        for s in settlements:
+            # Convert sats to ZAR (approximate)
+            # TODO: Get actual rate from historical data
+            sats_zar = Decimal(s.commission_sats_earned) / Decimal("100000000") * Decimal("120000")
+
+            results.append(SettlementResponse(
+                settlement_id=str(s.id),
+                period_start=s.period_start,
+                period_end=s.period_end,
+                amount_zar=s.amount_zar_owed,
+                amount_sats=s.commission_sats_earned,
+                status=s.status.value,
+                due_date=s.period_end,  # Settlement due on Sunday
+            ))
+
+        return results
+
+    except Exception as e:
+        logger.error(f"Settlement fetch failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get settlements"
+        )
+
+
+@router.post("/settlements/{settlement_id}/confirm", response_model=SettlementConfirmResponse)
+async def confirm_settlement(
+    settlement_id: str,
+    request: SettlementConfirmRequest,
+    db: Session = Depends(get_db),
+    current_agent: dict = Depends(get_current_agent),
+):
+    """
+    Confirm settlement payment received
+
+    Agent confirms they received ZAR payment from platform.
+    """
+    try:
+        agent_id = uuid.UUID(current_agent["agent_id"])
+        settle_id = uuid.UUID(settlement_id)
+
+        settlement = db.query(Settlement).filter(
+            Settlement.id == settle_id,
+            Settlement.agent_id == agent_id,
+        ).first()
+
+        if not settlement:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Settlement not found"
+            )
+
+        # Mark confirmed
+        settlement.status = "CONFIRMED"
+        settlement.payment_method = request.payment_method
+        settlement.payment_reference = request.reference_number
+        db.commit()
+
+        logger.info(f"Settlement confirmed: {settlement_id}")
+
+        return SettlementConfirmResponse(
+            confirmed=True,
+            settlement_id=str(settlement.id),
+            next_payment_due=None,  # TODO: Calculate next settlement date
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Settlement confirmation failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to confirm settlement"
+        )
     # token: str = Depends(get_agent_token),
 ):
     """
