@@ -171,9 +171,16 @@ def create_app() -> FastAPI:
     # ========== STATIC FILES & ADMIN PANEL ==========
     
     from fastapi.staticfiles import StaticFiles
+    import os
     
     # Serve admin panel static files (must be mounted after all routes)
-    app.mount("/admin", StaticFiles(directory="static/admin", html=True), name="admin")
+    # Use absolute path to ensure it works from any working directory
+    static_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "admin")
+    if os.path.exists(static_path):
+        app.mount("/admin", StaticFiles(directory=static_path, html=True), name="admin")
+        logger.info(f"Admin panel mounted at /admin from {static_path}")
+    else:
+        logger.warning(f"Admin panel static files not found at {static_path}")
     
     logger.info(f"FastAPI application created (environment: {settings.environment})")
     
