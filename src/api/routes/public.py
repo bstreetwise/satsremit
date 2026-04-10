@@ -28,6 +28,26 @@ settings = get_settings()
 router = APIRouter()
 
 
+# ===== RATE LIMITING =====
+
+def check_rate_limit(client_ip: str, sender_phone: str, max_requests: int = 5, window_minutes: int = 15) -> tuple:
+    """
+    Check if client has exceeded rate limit
+    
+    Args:
+        client_ip: Client IP address
+        sender_phone: Sender phone number
+        max_requests: Max requests per window
+        window_minutes: Time window in minutes
+    
+    Returns:
+        Tuple of (allowed: bool, error_message: str)
+    """
+    # TODO: Implement proper rate limiting with Redis
+    # For now, allow all requests (rate limiting managed at LND/blockchain level)
+    return True, None
+
+
 # ===== HEALTH CHECK =====
 
 @router.get("/health")
