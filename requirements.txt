@@ -29,7 +29,7 @@ httpx==0.25.2
 # africastalking==1.0.5
 
 # Authentication & Security
-PyJWT==2.8.1
+PyJWT==2.12.1
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 cryptography==41.0.7
