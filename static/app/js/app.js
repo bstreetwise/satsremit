@@ -356,15 +356,23 @@ function generate_qr_code(invoiceRequest) {
     const qrContainer = document.getElementById('qr-code');
     if (!qrContainer) return;
 
-    // Use qrcode.js library
-    const qr = new QRCode(qrContainer, {
-        text: invoiceRequest,
-        width: 250,
-        height: 250,
-        colorDark: '#000",
-        colorLight: '#fff",
-        correctLevel: QRCode.CorrectLevel.H
-    });
+    // Clear previous QR code if exists
+    qrContainer.innerHTML = '';
+
+    // Use qrcode.js library to generate QR code for Lightning invoice
+    try {
+        const qr = new QRCode(qrContainer, {
+            text: invoiceRequest,
+            width: 250,
+            height: 250,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+    } catch (error) {
+        console.error('Failed to generate QR code:', error);
+        show_alert('Failed to generate payment QR code', 'error');
+    }
 }
 
 function view_transfer_status() {
