@@ -204,16 +204,42 @@ def _get_fernet() -> Fernet:
     """
     Return a Fernet instance keyed from settings.
 
-    If ``preimage_encryption_key`` is set it must be a valid 32-byte
-    URL-safe base64 key (as produced by ``Fernet.generate_key()``).
-    Otherwise a deterministic key is derived from ``jwt_secret_key`` so
-    the application still starts in development without extra config —
-    but production deployments **must** set PREIMAGE_ENCRYPTION_KEY.
+    Key priority:
+    1. ``settings.preimage_encryption_key`` — must be a URL-safe base64 key
+       produced by ``Fernet.generate_key()``.  Required in production.
+    2. Dev fallback — a key derived from ``jwt_secret_key`` via SHA-256.
+       Acceptable in development/test so the app boots without extra config,
+       but **raises** ``RuntimeError`` if the environment is "production"
+       to ensure the fallback can never silently reach live deployments.
+
+    Raises:
+        RuntimeError: If called in production without a dedicated
+            ``PREIMAGE_ENCRYPTION_KEY``.
+        ValueError: If ``preimage_encryption_key`` is set but malformed.
     """
     key = settings.preimage_encryption_key
     if key:
-        return Fernet(key.encode())
-    # Derive a stable 32-byte key from the JWT secret (dev fallback only)
+        try:
+            return Fernet(key.encode())
+        except Exception as exc:
+            raise ValueError(
+                "PREIMAGE_ENCRYPTION_KEY is set but is not a valid Fernet key. "
+                "Generate one with: python -c \"from cryptography.fernet import "
+                "Fernet; print(Fernet.generate_key().decode())\""
+            ) from exc
+
+    # No dedicated key — use the dev fallback.
+    if settings.environment == "production":
+        raise RuntimeError(
+            "PREIMAGE_ENCRYPTION_KEY must be set in production. "
+            "The JWT-secret-derived fallback key is not safe for live deployments "
+            "because rotating the JWT secret would invalidate all stored preimage "
+            "ciphertexts.  Generate a dedicated key with: "
+            "python -c \"from cryptography.fernet import Fernet; "
+            "print(Fernet.generate_key().decode())\""
+        )
+
+    # Derive a stable 32-byte key from the JWT secret (dev / test only).
     derived = base64.urlsafe_b64encode(
         hashlib.sha256(settings.jwt_secret_key.encode()).digest()
     )
@@ -222,24 +248,111 @@ def _get_fernet() -> Fernet:
 
 def encrypt_preimage(preimage_hex: str) -> str:
     """
-    Encrypt a hex-encoded LND preimage for storage.
+    Encrypt a hex-encoded LND preimage for secure storage.
 
-    Returns a URL-safe base64 ciphertext string suitable for the
-    ``InvoiceHold.preimage`` column.
+    The plaintext **must** be a 64-character lowercase hex string
+    (the output of ``secrets.token_hex(32)``).  Passing any other value
+    will encrypt successfully but ``decrypt_preimage`` will return the
+    same non-hex string — callers are responsible for validating the
+    plaintext before calling LND's settle endpoint.
+
+    Returns:
+        A URL-safe Fernet ciphertext string.  Length is approximately
+        180–220 characters for a 64-char plaintext — ensure the target
+        column is at least ``String(512)``.
     """
+    if not isinstance(preimage_hex, str) or len(preimage_hex) != 64:
+        raise ValueError(
+            f"preimage_hex must be a 64-character hex string, got {len(preimage_hex)!r} chars"
+        )
     fernet = _get_fernet()
     return fernet.encrypt(preimage_hex.encode()).decode()
 
 
 def decrypt_preimage(ciphertext: str) -> str:
     """
-    Decrypt a stored preimage ciphertext back to hex.
+    Decrypt a stored Fernet ciphertext back to the original hex preimage.
 
-    Raises ``cryptography.fernet.InvalidToken`` if the ciphertext is
-    tampered or the key is wrong.
+    Args:
+        ciphertext: The value stored in ``InvoiceHold.preimage``.
+
+    Returns:
+        64-character hex string suitable for LND's ``settle_invoice`` call.
+
+    Raises:
+        ``cryptography.fernet.InvalidToken``: If the ciphertext is
+            corrupted, truncated, or was encrypted with a different key.
     """
     fernet = _get_fernet()
     return fernet.decrypt(ciphertext.encode()).decode()
+
+
+# ---------------------------------------------------------------------------
+# SQLAlchemy TypeDecorator — transparent encryption at the persistence layer
+# ---------------------------------------------------------------------------
+
+from sqlalchemy import String
+from sqlalchemy.types import TypeDecorator
+
+
+class EncryptedPreimage(TypeDecorator):
+    """
+    SQLAlchemy column type that transparently encrypts preimage values on
+    write and decrypts them on read.
+
+    Usage in a model::
+
+        class InvoiceHold(Base):
+            preimage = Column(EncryptedPreimage(512), nullable=False)
+
+    **Why a TypeDecorator instead of application-layer calls?**
+
+    Placing the encrypt/decrypt logic here means:
+
+    - Every ORM write path (``session.add``, ``session.merge``,
+      ``session.execute`` with an ORM-mapped insert) automatically
+      encrypts.  A developer cannot accidentally bypass it by forgetting
+      to call ``encrypt_preimage()`` manually.
+    - Any direct DB read through the ORM (``session.query``,
+      ``session.get``) automatically decrypts — the caller never handles
+      raw ciphertext.
+    - Bulk inserts that bypass the ORM (e.g. ``session.execute(insert(...))``
+      with raw values) are the only exception; those paths must call
+      ``encrypt_preimage`` explicitly, which is the expected behaviour for
+      low-level operations.
+
+    The column is stored as ``VARCHAR(512)`` in the database.  Fernet
+    output for a 64-char plaintext is ~180 characters; 512 gives safe
+    headroom for longer inputs and future algorithm changes.
+    """
+
+    impl = String
+    cache_ok = True   # Fernet key comes from settings, not the type itself
+
+    def __init__(self, length: int = 512, **kwargs):
+        super().__init__(length, **kwargs)
+
+    def process_bind_param(self, value, dialect):
+        """Encrypt on write (Python → DB)."""
+        if value is None:
+            return None
+        # If it's already a ciphertext (starts with the Fernet header byte
+        # gAAAAA…) don't double-encrypt.  This guards against accidental
+        # double-wrapping if the caller passes an already-encrypted value.
+        if isinstance(value, str) and value.startswith("gAAAAA"):
+            logger.warning(
+                "EncryptedPreimage.process_bind_param received what looks like "
+                "an already-encrypted value — storing as-is to avoid double encryption. "
+                "Pass the plaintext hex preimage, not the ciphertext."
+            )
+            return value
+        return encrypt_preimage(value)
+
+    def process_result_value(self, value, dialect):
+        """Decrypt on read (DB → Python)."""
+        if value is None:
+            return None
+        return decrypt_preimage(value)
 
 
 def verify_webhook_hmac(body: bytes, signature_header: str) -> bool:

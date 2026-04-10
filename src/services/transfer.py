@@ -11,6 +11,8 @@ from decimal import Decimal
 from enum import Enum
 import uuid
 
+from cryptography.fernet import InvalidToken
+
 from sqlalchemy.orm import Session
 
 from src.models.models import (
@@ -22,7 +24,6 @@ from src.models.models import (
 )
 from src.services.lnd import LNDService
 from src.core.config import get_settings
-from src.core.security import encrypt_preimage, decrypt_preimage
 from src.utils import generate_reference
 
 logger = logging.getLogger(__name__)
@@ -357,20 +358,47 @@ class TransferService:
                     f"Cannot execute payout in state {transfer.state}"
                 )
 
-            # Generate preimage for invoice settlement
+            # Generate preimage for invoice settlement.
+            # The plaintext hex is passed directly to InvoiceHold — the
+            # EncryptedPreimage TypeDecorator on the column transparently
+            # encrypts it before writing to the database.
             preimage = secrets.token_hex(32)  # 32 bytes = 64 hex chars
 
-            # Encrypt preimage before persisting — never store plaintext
             hold_record = InvoiceHold(
                 id=uuid.uuid4(),
                 invoice_hash=transfer.invoice_hash,
                 transfer_id=transfer.id,
-                preimage=encrypt_preimage(preimage),
+                preimage=preimage,   # TypeDecorator encrypts on write
                 expires_at=datetime.utcnow() + timedelta(hours=1),
             )
 
             self.db.add(hold_record)
             self.db.commit()
+
+            # Verify the TypeDecorator round-trip before we settle.
+            # db.refresh() re-reads the row, which causes the TypeDecorator
+            # to decrypt the stored ciphertext.  If the decrypted value
+            # matches our in-memory plaintext we know:
+            #   a) the DB received ciphertext (not plaintext), and
+            #   b) decryption with the current key works.
+            # If either fails we refuse to settle — leaving the hold invoice
+            # open so the sender can reclaim their funds.
+            try:
+                self.db.refresh(hold_record)
+            except InvalidToken as exc:
+                raise RuntimeError(
+                    f"Preimage encryption round-trip failed for transfer "
+                    f"{transfer.reference}: stored ciphertext could not be "
+                    "decrypted (InvalidToken). Refusing to settle — check "
+                    "PREIMAGE_ENCRYPTION_KEY."
+                ) from exc
+
+            if hold_record.preimage != preimage:
+                raise RuntimeError(
+                    f"Preimage encryption round-trip failed for transfer "
+                    f"{transfer.reference}: decrypted value does not match original. "
+                    "Refusing to settle — check PREIMAGE_ENCRYPTION_KEY."
+                )
 
             # Settle invoice using the plaintext preimage (in memory only)
             await self.lnd.settle_invoice(preimage)

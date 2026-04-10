@@ -8,6 +8,8 @@ from datetime import datetime
 import uuid
 import enum
 
+from src.core.security import EncryptedPreimage
+
 Base = declarative_base()
 
 
@@ -154,19 +156,33 @@ class Settlement(Base):
 
 
 class InvoiceHold(Base):
-    """Hold invoice secrets management"""
+    """
+    Hold invoice secrets management.
+
+    ``preimage`` uses the ``EncryptedPreimage`` TypeDecorator which
+    transparently encrypts the 64-char hex preimage on every ORM write and
+    decrypts it on every ORM read.  The ciphertext stored in the database
+    is a Fernet token (~180 chars); the column is sized at VARCHAR(512) for
+    headroom.
+
+    **Never** store a plaintext preimage here.  The TypeDecorator enforces
+    this for all ORM paths.  Raw SQL inserts must call
+    ``encrypt_preimage()`` explicitly.
+    """
     __tablename__ = "invoice_holds"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     invoice_hash = Column(String(66), unique=True, nullable=False, index=True)
     transfer_id = Column(UUID(as_uuid=True), ForeignKey("transfers.id"), nullable=False, unique=True)
-    
-    # Preimage (ENCRYPTED in database)
-    preimage = Column(String(128), nullable=False)  # Encrypted preimage
-    
+
+    # Preimage — stored encrypted via EncryptedPreimage TypeDecorator.
+    # On write: plaintext hex string → Fernet ciphertext (VARCHAR 512).
+    # On read:  Fernet ciphertext → plaintext hex string.
+    preimage = Column(EncryptedPreimage(512), nullable=False)
+
     # Expiry
     expires_at = Column(DateTime, nullable=False)
-    
+
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
