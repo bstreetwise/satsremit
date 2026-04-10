@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SatsRemit Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-bolt"></i>
+                    <span>SatsRemit Admin</span>
+                </div>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#" data-section="dashboard" class="nav-link active">
+                    <i class="fas fa-chart-line"></i> Dashboard
+                </a></li>
+                <li><a href="#" data-section="agents" class="nav-link">
+                    <i class="fas fa-users"></i> Agents
+                </a></li>
+                <li><a href="#" data-section="transfers" class="nav-link">
+                    <i class="fas fa-exchange-alt"></i> Transfers
+                </a></li>
+                <li><a href="#" data-section="settlements" class="nav-link">
+                    <i class="fas fa-receipt"></i> Settlements
+                </a></li>
+                <li><a href="#" data-section="analytics" class="nav-link">
+                    <i class="fas fa-analytics"></i> Analytics
+                </a></li>
+                <li class="separator"></li>
+                <li><a href="#" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-bar">
+                <div class="header-left">
+                    <h1 id="page-title">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <div class="admin-info">
+                        <span id="admin-name">Admin User</span>
+                        <i class="fas fa-user-circle"></i>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Alert Container -->
+            <div id="alert-container"></div>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard" class="section active">
+                <div class="dashboard-grid">
+                    <!-- Volume Metrics -->
+                    <div class="card metric-card">
+                        <div class="card-header">
+                            <h3>Daily Volume</h3>
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="metric-value" id="daily-volume">ZAR 0.00</div>
+                            <div class="metric-transfers">0 transfers today</div>
+                        </div>
+                    </div>
+
+                    <div class="card metric-card">
+                        <div class="card-header">
+                            <h3>Weekly Volume</h3>
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="metric-value" id="weekly-volume">ZAR 0.00</div>
+                            <div class="metric-transfers">0 transfers this week</div>
+                        </div>
+                    </div>
+
+                    <div class="card metric-card">
+                        <div class="card-header">
+                            <h3>Monthly Volume</h3>
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="metric-value" id="monthly-volume">ZAR 0.00</div>
+                            <div class="metric-transfers">0 transfers this month</div>
+                        </div>
+                    </div>
+
+                    <div class="card metric-card">
+                        <div class="card-header">
+                            <h3>Fees Collected</h3>
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div class="card-body">
+                            <div class="metric-value" id="fees-collected">0 sats</div>
+                            <div class="metric-transfers">Platform earnings</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3>Platform Statistics</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <label>Active Agents</label>
+                                <value id="active-agents">0</value>
+                            </div>
+                            <div class="stat-item">
+                                <label>Pending Settlements</label>
+                                <value id="pending-settlements">0</value>
+                            </div>
+                            <div class="stat-item">
+                                <label>Platform Earnings</label>
+                                <value id="platform-earnings">0 sats</value>
+                            </div>
+                            <div class="stat-item">
+                                <label>Agent Earnings</label>
+                                <value id="agent-earnings">0 sats</value>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Agents Section -->
+            <section id="agents" class="section">
+                <div class="section-header">
+                    <h2>Agent Management</h2>
+                    <button class="btn btn-primary" id="add-agent-btn">
+                        <i class="fas fa-plus"></i> Add New Agent
+                    </button>
+                </div>
+
+                <!-- Add Agent Modal -->
+                <div id="add-agent-modal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Register New Agent</h3>
+                            <button class="close-btn">&times;</button>
+                        </div>
+                        <form id="add-agent-form" class="form">
+                            <div class="form-group">
+                                <label for="agent-phone">Agent Phone</label>
+                                <input type="tel" id="agent-phone" placeholder="+263..." required>
+                            </div>
+                            <div class="form-group">
+                                <label for="agent-name">Agent Name</label>
+                                <input type="text" id="agent-name" placeholder="Agent Name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="agent-location">Location</label>
+                                <select id="agent-location" required>
+                                    <option value="">Select Location</option>
+                                    <option value="harare">Harare</option>
+                                    <option value="bulawayo">Bulawayo</option>
+                                    <option value="mutare">Mutare</option>
+                                    <option value="kwekwe">Kwekwe</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="initial-cash">Initial Cash (ZAR)</label>
+                                <input type="number" id="initial-cash" placeholder="2000" min="100" required>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Create Agent</button>
+                                <button type="button" class="btn btn-secondary close-btn">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Agents Table -->
+                <div class="card">
+                    <div class="card-body">
+                        <table class="table" id="agents-table">
+                            <thead>
+                                <tr>
+                                    <th>Agent</th>
+                                    <th>Phone</th>
+                                    <th>Location</th>
+                                    <th>Cash Balance</th>
+                                    <th>Commission</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="agents-tbody">
+                                <tr class="loading">
+                                    <td colspan="7">Loading agents...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transfers Section -->
+            <section id="transfers" class="section">
+                <div class="section-header">
+                    <h2>Transfer History</h2>
+                    <div class="filter-group">
+                        <select id="transfer-filter-state">
+                            <option value="">All States</option>
+                            <option value="INITIATED">Initiated</option>
+                            <option value="PAID">Paid</option>
+                            <option value="SETTLED">Settled</option>
+                            <option value="RECEIVER_VERIFIED">Verified</option>
+                            <option value="PAYOUT_EXECUTED">Executed</option>
+                        </select>
+                        <input type="text" id="transfer-search" placeholder="Search by reference...">
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <table class="table" id="transfers-table">
+                            <thead>
+                                <tr>
+                                    <th>Reference</th>
+                                    <th>Amount (ZAR)</th>
+                                    <th>Amount (sats)</th>
+                                    <th>Agent</th>
+                                    <th>State</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transfers-tbody">
+                                <tr class="loading">
+                                    <td colspan="7">Loading transfers...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="pagination">
+                            <button id="prev-page" class="btn btn-sm">Previous</button>
+                            <span id="page-info">Page 1</span>
+                            <button id="next-page" class="btn btn-sm">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settlements Section -->
+            <section id="settlements" class="section">
+                <div class="section-header">
+                    <h2>Settlement Records</h2>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <table class="table" id="settlements-table">
+                            <thead>
+                                <tr>
+                                    <th>Settlement ID</th>
+                                    <th>Agent</th>
+                                    <th>Period</th>
+                                    <th>Amount (ZAR)</th>
+                                    <th>Status</th>
+                                    <th>Due Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="settlements-tbody">
+                                <tr class="loading">
+                                    <td colspan="7">Loading settlements...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Analytics Section -->
+            <section id="analytics" class="section">
+                <div class="section-header">
+                    <h2>Analytics & Insights</h2>
+                </div>
+
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3>Performance Metrics</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="metrics-container">
+                            <div class="metric">
+                                <label>Total Transfers</label>
+                                <value id="total-transfers">0</value>
+                            </div>
+                            <div class="metric">
+                                <label>Total Volume</label>
+                                <value id="total-volume-value">ZAR 0.00</value>
+                            </div>
+                            <div class="metric">
+                                <label>Average Transfer</label>
+                                <value id="avg-transfer">ZAR 0.00</value>
+                            </div>
+                            <div class="metric">
+                                <label>Success Rate</label>
+                                <value id="success-rate">0%</value>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3>Top Agents by Volume</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="table" id="top-agents-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Agent</th>
+                                    <th>Transfers</th>
+                                    <th>Volume (ZAR)</th>
+                                    <th>Commission (sats)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="top-agents-tbody">
+                                <tr class="loading">
+                                    <td colspan="5">Loading data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="spinner hidden">
+        <div class="spinner-inner"></div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

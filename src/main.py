@@ -150,6 +150,13 @@ def create_app() -> FastAPI:
             "docs": "/api/docs" if not settings.is_production else None,
         }
     
+    # ========== STATIC FILES & ADMIN PANEL ==========
+    
+    from fastapi.staticfiles import StaticFiles
+    
+    # Serve admin panel static files
+    app.mount("/admin", StaticFiles(directory="static/admin", html=True), name="admin")
+    
     # ========== ROUTE IMPORTS ==========
     
     # Public routes
