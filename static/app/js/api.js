@@ -45,7 +45,10 @@ const API = {
      * Get transfer quote
      */
     async getQuote(amountZAR) {
-        return this.request(`/transfers/quote?amount_zar=${amountZAR}`);
+        return this.request('/transfers/quote', {
+            method: 'POST',
+            body: { amount_zar: amountZAR },
+        });
     },
 
     /**
