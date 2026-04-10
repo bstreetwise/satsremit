@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SatsRemit - Bitcoin Remittance to Zimbabwe</title>
+    <meta name="description" content="Send money to Zimbabwe via Bitcoin Lightning Network">
+    <meta name="theme-color" content="#f7931a">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header & Navigation -->
+        <header>
+            <div class="header-content">
+                <a href="#home" class="logo">
+                    <i class="fas fa-bolt"></i>
+                    <span>SatsRemit</span>
+                </a>
+                <nav class="navbar">
+                    <a href="#home" class="nav-link active">
+                        <i class="fas fa-home"></i> Home
+                    </a>
+                    <a href="#transfer" class="nav-link">
+                        <i class="fas fa-paper-plane"></i> Send
+                    </a>
+                    <a href="#status" class="nav-link">
+                        <i class="fas fa-info-circle"></i> Track
+                    </a>
+                    <a href="#history" class="nav-link">
+                        <i class="fas fa-history"></i> History
+                    </a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Alerts Container -->
+        <div id="alerts"></div>
+
+        <!-- Spinner -->
+        <div id="spinner">
+            <div class="spinner-circle"></div>
+            <p style="color: white; margin-top: 1rem;">Processing...</p>
+        </div>
+
+        <!-- Main Content -->
+        <main>
+            <!-- HOME PAGE -->
+            <div id="page-home" class="page active">
+                <div class="hero-section" style="text-align: center; margin-bottom: 3rem;">
+                    <h1 style="font-size: 2.5rem; color: #f7931a; margin-bottom: 1rem;">
+                        <i class="fas fa-bolt"></i> SatsRemit
+                    </h1>
+                    <p style="font-size: 1.2rem; color: #666; margin-bottom: 2rem;">
+                        Fast, cheap remittances to Zimbabwe using Bitcoin Lightning
+                    </p>
+                    <a href="#transfer" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                        <i class="fas fa-paper-plane"></i> Send Money Now
+                    </a>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin: 2rem 0;">
+                    <!-- Feature Card 1 -->
+                    <div class="card">
+                        <div style="text-align: center; color: #f7931a; font-size: 3rem; margin-bottom: 1rem;">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h3 style="text-align: center;">Fast</h3>
+                        <p style="text-align: center; color: #666;">
+                            Payments settle in minutes with Bitcoin Lightning Network
+                        </p>
+                    </div>
+
+                    <!-- Feature Card 2 -->
+                    <div class="card">
+                        <div style="text-align: center; color: #f7931a; font-size: 3rem; margin-bottom: 1rem;">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <h3 style="text-align: center;">Cheap</h3>
+                        <p style="text-align: center; color: #666;">
+                            Ultra-low fees with transparent pricing
+                        </p>
+                    </div>
+
+                    <!-- Feature Card 3 -->
+                    <div class="card">
+                        <div style="text-align: center; color: #f7931a; font-size: 3rem; margin-bottom: 1rem;">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <h3 style="text-align: center;">Secure</h3>
+                        <p style="text-align: center; color: #666;">
+                            Decentralized payments with Bitcoin security
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card" style="background: linear-gradient(135deg, #f7931a 0%, #e58a0c 100%); color: white; text-align: center;">
+                    <h3>How It Works</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 2rem; margin-top: 1.5rem;">
+                        <div>
+                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">1</div>
+                            <p>Enter recipient details</p>
+                        </div>
+                        <div>
+                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">2</div>
+                            <p>Pay Lightning invoice</p>
+                        </div>
+                        <div>
+                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">3</div>
+                            <p>Recipient receives ZAR</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TRANSFER PAGE -->
+            <div id="page-transfer" class="page">
+                <div class="transfer-form">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Send Remittance</h3>
+                            <p style="color: #666; margin: 0;">Send money to Zimbabwe in minutes</p>
+                        </div>
+
+                        <form id="transfer-form">
+                            <!-- Sender Section -->
+                            <div class="form-section">
+                                <h4>Your Details</h4>
+                                <div class="form-group">
+                                    <label for="sender-phone">Your Phone (E.164 format)</label>
+                                    <input type="tel" id="sender-phone" name="sender_phone" placeholder="+27..." required>
+                                    <small style="color: #666; margin-top: 0.5rem;">Include country code (e.g., +27 for South Africa)</small>
+                                </div>
+                            </div>
+
+                            <!-- Amount Section -->
+                            <div class="form-section">
+                                <h4>Amount</h4>
+                                <div class="form-group">
+                                    <label for="amount-zar">Amount (ZAR)</label>
+                                    <input type="number" id="amount-zar" name="amount_zar" placeholder="100.00" step="0.01" min="0" required>
+                                </div>
+
+                                <div id="quote-display" class="quote-display">
+                                    <p class="text-muted">Enter an amount to see the quote</p>
+                                </div>
+                            </div>
+
+                            <!-- Recipient Section -->
+                            <div class="form-section">
+                                <h4>Recipient Details</h4>
+                                <div class="form-group">
+                                    <label for="receiver-name">Recipient Full Name</label>
+                                    <input type="text" id="receiver-name" name="receiver_name" placeholder="John Doe" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="receiver-phone">Recipient Phone (Zimbabwe)</label>
+                                    <input type="tel" id="receiver-phone" name="receiver_phone" placeholder="+263..." required>
+                                    <small style="color: #666; margin-top: 0.5rem;">Zimbabwe phone number</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="receiver-location">Recipient Location</label>
+                                    <select id="receiver-location" name="receiver_location" required>
+                                        <option value="">-- Select Location --</option>
+                                        <option value="ZWE_HRR">Harare</option>
+                                        <option value="ZWE_BUL">Bulawayo</option>
+                                        <option value="ZWE_GWR">Gweru</option>
+                                        <option value="ZWE_MUT">Mutare</option>
+                                        <option value="ZWE_KWE">Kwekwe</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit" class="btn btn-primary btn-block" style="font-size: 1.1rem; padding: 1rem;">
+                                <i class="fas fa-arrow-right"></i> Continue to Payment
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAYMENT PAGE -->
+            <div id="page-payment" class="page">
+                <div id="payment-container"></div>
+            </div>
+
+            <!-- STATUS PAGE -->
+            <div id="page-status" class="page">
+                <div id="status-container"></div>
+            </div>
+
+            <!-- HISTORY PAGE -->
+            <div id="page-history" class="page">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Transfer History</h3>
+                    </div>
+                    <div id="history-container"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p>&copy; 2026 SatsRemit. Bitcoin remittances to Zimbabwe.</p>
+            <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">
+                Powered by Bitcoin Lightning Network
+            </p>
+        </footer>
+    </div>
+
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- API Module -->
+    <script src="js/api.js"></script>
+
+    <!-- Main Application -->
+    <script src="js/app.js"></script>
+</body>
+</html>

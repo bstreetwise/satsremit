@@ -175,7 +175,15 @@ def create_app() -> FastAPI:
     from fastapi.staticfiles import StaticFiles
     import os
     
-    # Serve admin panel static files (must be mounted after all routes)
+    # Serve public app (user interface) - mount first as root fallback
+    app_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "app")
+    if os.path.exists(app_path):
+        app.mount("/app", StaticFiles(directory=app_path, html=True), name="app")
+        logger.info(f"Public app mounted at /app from {app_path}")
+    else:
+        logger.warning(f"Public app static files not found at {app_path}")
+
+    # Serve admin panel static files (must be mounted after public app)
     # Use absolute path to ensure it works from any working directory
     static_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "admin")
     if os.path.exists(static_path):

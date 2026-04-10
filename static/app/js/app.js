@@ -1,0 +1,544 @@
+/**
+ * SatsRemit User Application
+ * Main application logic and flow management
+ */
+
+const APP_STATE = {
+    currentTransfer: null,
+    userPhone: localStorage.getItem('user_phone') || null,
+};
+
+// ===== INITIALIZATION =====
+
+document.addEventListener('DOMContentLoaded', async function () {
+    init_navigation();
+    init_event_listeners();
+
+    // Check service health
+    try {
+        await API.getHealth();
+    } catch (error) {
+        show_alert('Service unavailable - please try again later', 'error');
+    }
+
+    // Navigate to home if not already navigated
+    if (!window.location.hash) {
+        navigate_to_page('home');
+    }
+});
+
+// ===== NAVIGATION =====
+
+function init_navigation() {
+    // Handle hash-based routing
+    window.addEventListener('hashchange', () => {
+        const page = window.location.hash.substring(1) || 'home';
+        navigate_to_page(page);
+    });
+
+    // Initial navigation from hash
+    const initialPage = window.location.hash.substring(1) || 'home';
+    navigate_to_page(initialPage);
+}
+
+function navigate_to_page(page) {
+    // Hide all pages
+    document.querySelectorAll('.page').forEach(p => {
+        p.style.display = 'none';
+        p.classList.remove('active');
+    });
+
+    // Show requested page
+    const pageElement = document.getElementById(`page-${page}`);
+    if (pageElement) {
+        pageElement.style.display = 'block';
+        pageElement.classList.add('active');
+
+        // Update nav links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+        });
+        const activeLink = document.querySelector(`[href="#${page}"]`);
+        if (activeLink) {
+            activeLink.classList.add('active');
+        }
+
+        // Load page-specific content
+        if (page === 'transfer') {
+            load_transfer_page();
+        } else if (page === 'status') {
+            load_status_page();
+        } else if (page === 'history') {
+            load_history_page();
+        }
+    }
+}
+
+// ===== EVENT LISTENERS =====
+
+function init_event_listeners() {
+    // Transfer form submission
+    const transferForm = document.getElementById('transfer-form');
+    if (transferForm) {
+        transferForm.addEventListener('submit', handle_transfer_submit);
+    }
+
+    // Phone input - save to localStorage
+    const phoneInput = document.getElementById('sender-phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('change', (e) => {
+            APP_STATE.userPhone = e.target.value;
+            localStorage.setItem('user_phone', e.target.value);
+        });
+    }
+
+    // Amount input - fetch quote in real-time
+    const amountInput = document.getElementById('amount-zar');
+    if (amountInput) {
+        amountInput.addEventListener('input', debounce(handle_amount_change, 500));
+    }
+
+    // Location selector
+    const locationSelect = document.getElementById('receiver-location');
+    if (locationSelect) {
+        locationSelect.addEventListener('change', () => {
+            update_quote_display();
+        });
+    }
+}
+
+// ===== TRANSFER FORM HANDLING =====
+
+async function load_transfer_page() {
+    const phoneInput = document.getElementById('sender-phone');
+    if (phoneInput && APP_STATE.userPhone) {
+        phoneInput.value = APP_STATE.userPhone;
+    }
+    update_quote_display();
+}
+
+async function handle_amount_change(event) {
+    const amount = event.target.value;
+    if (amount && parseFloat(amount) > 0) {
+        await update_quote_display();
+    }
+}
+
+async function update_quote_display() {
+    const amountInput = document.getElementById('amount-zar');
+    const amount = parseFloat(amountInput.value);
+
+    if (!amount || amount <= 0) {
+        const quoteDisplay = document.getElementById('quote-display');
+        if (quoteDisplay) {
+            quoteDisplay.innerHTML = '<p class="text-muted">Enter an amount to see the quote</p>';
+        }
+        return;
+    }
+
+    try {
+        const quote = await API.getQuote(amount);
+        display_quote(quote);
+    } catch (error) {
+        show_alert(`Error fetching quote: ${error.message}`, 'error');
+    }
+}
+
+function display_quote(quote) {
+    const quoteDisplay = document.getElementById('quote-display');
+    quoteDisplay.innerHTML = `
+        <div class="quote-card">
+            <div class="quote-row">
+                <label>Amount you send:</label>
+                <span class="amount-main">${format_currency(quote.amount_zar)}</span>
+            </div>
+            <div class="quote-row">
+                <label>Exchange rate:</label>
+                <span>${format_currency(quote.rate_zar_per_btc)} per BTC</span>
+            </div>
+            <div class="quote-row">
+                <label>We receive:</label>
+                <span class="amount-sats">${format_sats(quote.amount_sats)}</span>
+            </div>
+            <div class="divider"></div>
+            <div class="quote-row">
+                <label>Platform fee:</label>
+                <span class="amount-fee">${format_currency(quote.platform_fee_zar)}</span>
+            </div>
+            <div class="quote-row">
+                <label>Agent commission:</label>
+                <span>${format_currency(quote.agent_commission_zar)}</span>
+            </div>
+            <div class="quote-row total">
+                <label>Recipient receives:</label>
+                <span class="amount-total">${format_currency(quote.receiver_gets_zar)}</span>
+            </div>
+        </div>
+    `;
+}
+
+async function handle_transfer_submit(event) {
+    event.preventDefault();
+
+    const senderPhone = document.getElementById('sender-phone').value;
+    const receiverPhone = document.getElementById('receiver-phone').value;
+    const receiverName = document.getElementById('receiver-name').value;
+    const receiverLocation = document.getElementById('receiver-location').value;
+    const amountZAR = parseFloat(document.getElementById('amount-zar').value);
+
+    // Validation
+    if (!senderPhone || !receiverPhone || !receiverName || !receiverLocation || !amountZAR) {
+        show_alert('Please fill in all fields', 'error');
+        return;
+    }
+
+    try {
+        show_spinner(true);
+
+        const response = await API.createTransfer({
+            sender_phone: senderPhone,
+            receiver_phone: receiverPhone,
+            receiver_name: receiverName,
+            receiver_location: receiverLocation,
+            amount_zar: amountZAR,
+        });
+
+        // Store transfer details
+        APP_STATE.currentTransfer = response;
+        localStorage.setItem('current_transfer', JSON.stringify(response));
+
+        // Navigate to payment page
+        navigate_to_page('payment');
+        load_payment_page();
+
+    } catch (error) {
+        show_alert(`Transfer failed: ${error.message}`, 'error');
+    } finally {
+        show_spinner(false);
+    }
+}
+
+// ===== PAYMENT PAGE =====
+
+function load_payment_page() {
+    if (!APP_STATE.currentTransfer) {
+        APP_STATE.currentTransfer = JSON.parse(localStorage.getItem('current_transfer'));
+    }
+
+    if (!APP_STATE.currentTransfer) {
+        navigate_to_page('transfer');
+        return;
+    }
+
+    const transfer = APP_STATE.currentTransfer;
+
+    const paymentContainer = document.getElementById('payment-container');
+    paymentContainer.innerHTML = `
+        <div class="payment-card">
+            <div class="payment-header">
+                <h3>Pay Invoice</h3>
+                <p class="reference">Reference: ${transfer.reference}</p>
+            </div>
+
+            <div class="payment-details">
+                <div class="detail-row">
+                    <label>Amount to pay:</label>
+                    <span class="amount-sats">${format_sats(transfer.amount_sats)}</span>
+                </div>
+                <div class="detail-row">
+                    <label>ZAR equivalent:</label>
+                    <span>${format_currency(transfer.amount_zar)}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Recipient:</label>
+                    <span>${transfer.agent_name} in ${transfer.agent_location}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Expires at:</label>
+                    <span>${format_date(transfer.expires_at)}</span>
+                </div>
+            </div>
+
+            <div class="invoice-section">
+                <h4>Lightning Network Invoice</h4>
+                <div class="invoice-qr" id="qr-code"></div>
+                <div class="invoice-request">
+                    <label>Invoice:</label>
+                    <textarea readonly>${transfer.invoice_request}</textarea>
+                    <button class="btn btn-secondary" onclick="copy_to_clipboard('${transfer.invoice_request}')">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+                <div class="invoice-hash">
+                    <small>Payment Hash: ${transfer.invoice_hash}</small>
+                </div>
+            </div>
+
+            <div class="payment-instructions">
+                <h4>How to pay:</h4>
+                <ol>
+                    <li>Open your Lightning wallet app</li>
+                    <li>Select "Scan QR Code" or "Paste Invoice"</li>
+                    <li>Scan the QR code or paste the invoice above</li>
+                    <li>Confirm the amount and complete payment</li>
+                    <li>Check your transfer status below</li>
+                </ol>
+            </div>
+
+            <div class="payment-status">
+                <h4>Payment Status</h4>
+                <div id="payment-status-display" class="status-checking">
+                    <p>Waiting for payment...</p>
+                </div>
+                <button class="btn btn-primary" onclick="check_payment_status()">
+                    <i class="fas fa-sync-alt"></i> Check Status
+                </button>
+            </div>
+
+            <div class="payment-actions">
+                <button class="btn btn-secondary" onclick="navigate_to_page('transfer')">
+                    <i class="fas fa-arrow-left"></i> Back to Transfer
+                </button>
+                <button class="btn btn-primary" onclick="view_transfer_status()">
+                    <i class="fas fa-info-circle"></i> View Full Status
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Generate QR code
+    generate_qr_code(transfer.invoice_request);
+
+    // Auto-check payment status periodically
+    check_payment_status();
+    setInterval(check_payment_status, 5000);
+}
+
+async function check_payment_status() {
+    if (!APP_STATE.currentTransfer) return;
+
+    try {
+        const status = await API.getTransferStatus(APP_STATE.currentTransfer.transfer_id);
+        display_payment_status(status);
+
+        // If paid, show success and navigate after delay
+        if (status.state === 'PAID' || status.state === 'SETTLED') {
+            show_alert('Payment received! Transfer is being processed.', 'success');
+            setTimeout(() => {
+                navigate_to_page('status');
+                load_status_page();
+            }, 2000);
+        }
+    } catch (error) {
+        // Silently fail on status check, don't interrupt user
+        console.error('Error checking payment status:', error);
+    }
+}
+
+function display_payment_status(status) {
+    const statusDisplay = document.getElementById('payment-status-display');
+    if (!statusDisplay) return;
+
+    const statusText = status.state.replace(/_/g, ' ').toLowerCase();
+    const statusClass = status.state === 'PENDING' ? 'status-pending' : 'status-success';
+
+    statusDisplay.className = statusClass;
+    statusDisplay.innerHTML = `
+        <div class="status-badge">
+            <i class="fas fa-${status.state === 'PENDING' ? 'hourglass-half' : 'check-circle'}"></i>
+            <p>${statusText}</p>
+        </div>
+        ${status.receiver_phone_verified ? '<p class="text-success">✓ Receiver verified</p>' : ''}
+    `;
+}
+
+function generate_qr_code(invoiceRequest) {
+    const qrContainer = document.getElementById('qr-code');
+    if (!qrContainer) return;
+
+    // Use qrcode.js library
+    const qr = new QRCode(qrContainer, {
+        text: invoiceRequest,
+        width: 250,
+        height: 250,
+        colorDark: '#000",
+        colorLight: '#fff",
+        correctLevel: QRCode.CorrectLevel.H
+    });
+}
+
+function view_transfer_status() {
+    navigate_to_page('status');
+    load_status_page();
+}
+
+// ===== STATUS PAGE =====
+
+async function load_status_page() {
+    if (!APP_STATE.currentTransfer) {
+        APP_STATE.currentTransfer = JSON.parse(localStorage.getItem('current_transfer'));
+    }
+
+    if (!APP_STATE.currentTransfer) {
+        navigate_to_page('transfer');
+        return;
+    }
+
+    const transfer = APP_STATE.currentTransfer;
+
+    try {
+        show_spinner(true);
+        const details = await API.getTransferDetails(transfer.transfer_id);
+        display_transfer_status(details);
+    } catch (error) {
+        show_alert(`Error loading status: ${error.message}`, 'error');
+    } finally {
+        show_spinner(false);
+    }
+}
+
+function display_transfer_status(transfer) {
+    const statusContainer = document.getElementById('status-container');
+    const stateClass = `status-${transfer.state.toLowerCase()}`;
+
+    statusContainer.innerHTML = `
+        <div class="status-card">
+            <div class="status-header ${stateClass}">
+                <h3>${transfer.state.replace(/_/g, ' ')}</h3>
+                <p class="reference">${transfer.reference}</p>
+            </div>
+
+            <div class="status-timeline">
+                ${generate_timeline(transfer)}
+            </div>
+
+            <div class="transfer-details">
+                <h4>Transfer Details</h4>
+                <div class="detail-row">
+                    <label>Sender:</label>
+                    <span>${transfer.sender_phone}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Receiver:</label>
+                    <span>${transfer.receiver_name} (${transfer.receiver_phone})</span>
+                </div>
+                <div class="detail-row">
+                    <label>Amount (ZAR):</label>
+                    <span>${format_currency(transfer.amount_zar)}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Amount (satoshis):</label>
+                    <span>${format_sats(transfer.amount_sats)}</span>
+                </div>
+                <div class="detail-row">
+                    <label>Rate:</label>
+                    <span>${format_currency(transfer.rate_zar_per_btc)} per BTC</span>
+                </div>
+                <div class="detail-row">
+                    <label>Created:</label>
+                    <span>${format_date(transfer.created_at)}</span>
+                </div>
+                ${transfer.payout_at ? `<div class="detail-row">
+                    <label>Paid out:</label>
+                    <span>${format_date(transfer.payout_at)}</span>
+                </div>` : ''}
+            </div>
+
+            <div class="status-actions">
+                <button class="btn btn-primary" onclick="navigate_to_page('transfer')">
+                    <i class="fas fa-arrow-left"></i> Send Another
+                </button>
+                <button class="btn btn-secondary" onclick="navigate_to_page('history')">
+                    <i class="fas fa-history"></i> View History
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function generate_timeline(transfer) {
+    const steps = [
+        { state: 'CREATED', label: 'Transfer Created', time: transfer.created_at },
+        { state: 'PENDING', label: 'Awaiting Payment', time: transfer.created_at },
+        { state: 'PAID', label: 'Payment Received', time: transfer.invoice_expiry_at },
+        { state: 'SETTLED', label: 'Settled', time: transfer.settled_at },
+    ];
+
+    return steps.map(step => {
+        const isComplete = steps.findIndex(s => s.state === transfer.state) >= steps.indexOf(step);
+        const isCurrent = step.state === transfer.state;
+
+        return `
+            <div class="timeline-step ${isComplete ? 'complete' : ''} ${isCurrent ? 'current' : ''}">
+                <div class="timeline-dot">
+                    <i class="fas fa-check"></i>
+                </div>
+                <div class="timeline-content">
+                    <p class="timeline-label">${step.label}</p>
+                    ${step.time ? `<small>${format_date(step.time)}</small>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ===== HISTORY PAGE =====
+
+async function load_history_page() {
+    const transfer = APP_STATE.currentTransfer;
+
+    if (transfer) {
+        try {
+            show_spinner(true);
+            const details = await API.getTransferDetails(transfer.transfer_id);
+            display_history(details);
+        } catch (error) {
+            show_alert(`Error loading history: ${error.message}`, 'error');
+        } finally {
+            show_spinner(false);
+        }
+    } else {
+        const historyContainer = document.getElementById('history-container');
+        historyContainer.innerHTML = '<p class="text-muted">No transfer history yet</p>';
+    }
+}
+
+function display_history(transfer) {
+    const historyContainer = document.getElementById('history-container');
+
+    historyContainer.innerHTML = `
+        <div class="history-card">
+            <div class="history-header">
+                <h4>${transfer.receiver_name}</h4>
+                <span class="badge badge-${transfer.state.toLowerCase()}">${transfer.state}</span>
+            </div>
+            <div class="history-details">
+                <div class="detail-row">
+                    <span>${transfer.receiver_phone}</span>
+                    <span class="amount">${format_currency(transfer.amount_zar)}</span>
+                </div>
+                <small>${format_date(transfer.created_at)}</small>
+            </div>
+        </div>
+    `;
+}
+
+// ===== UTILITY FUNCTIONS =====
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function copy_to_clipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        show_alert('Copied to clipboard!', 'success');
+    });
+}
