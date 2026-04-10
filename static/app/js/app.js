@@ -309,28 +309,45 @@ function load_payment_page() {
     // Generate QR code
     generate_qr_code(transfer.invoice_request);
 
-    // Auto-check payment status periodically
+    // Auto-check payment status periodically (every 5 seconds)
     check_payment_status();
-    setInterval(check_payment_status, 5000);
+    
+    // Clear any existing interval before setting new one
+    if (window.paymentCheckInterval) {
+        clearInterval(window.paymentCheckInterval);
+    }
+    window.paymentCheckInterval = setInterval(check_payment_status, 5000);
 }
 
 async function check_payment_status() {
     if (!APP_STATE.currentTransfer) return;
 
     try {
-        const status = await API.getTransferStatus(APP_STATE.currentTransfer.transfer_id);
-        display_payment_status(status);
+        const transfer = APP_STATE.currentTransfer;
+        
+        // Check invoice expiration
+        if (new Date(transfer.expires_at) < new Date()) {
+            show_alert('Invoice has expired. Please create a new transfer.', 'error');
+            clearInterval(window.paymentCheckInterval);
+            setTimeout(() => navigate_to_page('transfer'), 2000);
+            return;
+        }
 
-        // If paid, show success and navigate after delay
-        if (status.state === 'PAID' || status.state === 'SETTLED') {
-            show_alert('Payment received! Transfer is being processed.', 'success');
+        // Check if payment has actually been received via LND
+        const paymentStatus = await API.checkPaymentReceived(transfer.transfer_id);
+        
+        display_payment_status(paymentStatus);
+
+        // If payment received, move to status page
+        if (paymentStatus.payment_received) {
+            show_alert('✓ Payment received! Transfer is being processed.', 'success');
+            clearInterval(window.paymentCheckInterval);
             setTimeout(() => {
                 navigate_to_page('status');
                 load_status_page();
             }, 2000);
         }
     } catch (error) {
-        // Silently fail on status check, don't interrupt user
         console.error('Error checking payment status:', error);
     }
 }

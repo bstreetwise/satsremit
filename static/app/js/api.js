@@ -69,6 +69,15 @@ const API = {
     },
 
     /**
+     * Check if payment has been received
+     */
+    async checkPaymentReceived(transferId) {
+        return this.request(`/transfers/${transferId}/check-payment`, {
+            method: 'POST',
+        });
+    },
+
+    /**
      * Get transfer details
      */
     async getTransferDetails(transferId) {

@@ -275,6 +275,59 @@ async def get_transfer_status(
         )
 
 
+# ===== TRANSFERS: Check Payment =====
+
+@router.post("/transfers/{transfer_id}/check-payment")
+async def check_transfer_payment(
+    transfer_id: str,
+    db = Depends(get_db),
+):
+    """
+    Check if payment has been received for a transfer
+
+    Returns:
+        Updated transfer status
+    """
+    try:
+        transfer = db.query(Transfer).filter(
+            Transfer.id == uuid.UUID(transfer_id)
+        ).first()
+
+        if not transfer:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Transfer not found"
+            )
+
+        # Check if payment received via LND
+        transfer_svc = get_transfer_service(db)
+        is_paid = await transfer_svc.check_payment_received(transfer.id)
+
+        return {
+            "transfer_id": str(transfer.id),
+            "reference": transfer.reference,
+            "state": transfer.state,
+            "payment_received": is_paid,
+            "amount_sats": transfer.amount_sats,
+            "receiver_phone_verified": transfer.receiver_phone_verified,
+            "agent_verified": transfer.agent_verified,
+        }
+
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid transfer ID format"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Payment check failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to check payment status"
+        )
+
+
 # ===== TRANSFERS: By Reference =====
 
 @router.get("/transfers/ref/{reference}")
