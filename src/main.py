@@ -150,13 +150,6 @@ def create_app() -> FastAPI:
             "docs": "/api/docs" if not settings.is_production else None,
         }
     
-    # ========== STATIC FILES & ADMIN PANEL ==========
-    
-    from fastapi.staticfiles import StaticFiles
-    
-    # Serve admin panel static files
-    app.mount("/admin", StaticFiles(directory="static/admin", html=True), name="admin")
-    
     # ========== ROUTE IMPORTS ==========
     
     # Public routes
@@ -174,6 +167,13 @@ def create_app() -> FastAPI:
     # Webhook routes
     from src.api.routes import webhooks
     app.include_router(webhooks.router, prefix="/api/webhooks", tags=["webhooks"])
+    
+    # ========== STATIC FILES & ADMIN PANEL ==========
+    
+    from fastapi.staticfiles import StaticFiles
+    
+    # Serve admin panel static files (must be mounted after all routes)
+    app.mount("/admin", StaticFiles(directory="static/admin", html=True), name="admin")
     
     logger.info(f"FastAPI application created (environment: {settings.environment})")
     
