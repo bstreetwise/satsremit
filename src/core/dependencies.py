@@ -27,7 +27,9 @@ def get_db():
         async def get_items(db: Session = Depends(get_db)):
             ...
     """
-    return _get_db()
+    # Call _get_db() which is a generator function (has yield)
+    # FastAPI will handle the generator context manager protocol
+    yield from _get_db()
 
 
 def get_lnd_service() -> LNDService:
