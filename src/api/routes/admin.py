@@ -123,6 +123,41 @@ async def admin_login(
 
 # ===== AGENTS =====
 
+@router.get("/agents", response_model=List[AdminAgentCreateResponse])
+async def list_agents(
+    limit: int = Query(100, le=1000),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin),
+):
+    """
+    List all agents with pagination
+
+    Admin endpoint to view all agents in the system.
+    """
+    try:
+        agents = db.query(Agent).limit(limit).offset(offset).all()
+        
+        response_data = []
+        for agent in agents:
+            response_data.append(AdminAgentCreateResponse(
+                agent_id=str(agent.id),
+                phone=agent.phone,
+                name=agent.name,
+                status=agent.status.value,
+                cash_balance_zar=agent.cash_balance_zar,
+            ))
+        
+        return response_data
+
+    except Exception as e:
+        logger.error(f"Failed to list agents: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch agents"
+        )
+
+
 @router.post("/agents", response_model=AdminAgentCreateResponse)
 async def create_agent(
     request: AdminAgentCreateRequest,
