@@ -18,9 +18,16 @@ from src.api.schemas import (
     AdminAgentAdvanceResponse,
     AdminTransferListResponse,
     AdminVolumeResponse,
+    AgentLoginRequest,
+    AgentLoginResponse,
 )
 from src.core.dependencies import get_db, get_rate_service
-from src.core.security import hash_password, get_current_admin
+from src.core.security import (
+    hash_password,
+    get_current_admin,
+    verify_password,
+    create_token,
+)
 from src.models.models import (
     Agent,
     AgentStatus,
@@ -33,6 +40,70 @@ from decimal import Decimal
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# ===== AUTHENTICATION =====
+
+@router.post("/auth/login", response_model=AgentLoginResponse)
+async def admin_login(
+    request: AgentLoginRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Admin login - phone + password
+
+    Returns:
+        JWT token for authenticated requests
+    """
+    try:
+        admin = db.query(Agent).filter(
+            Agent.phone == request.phone,
+            Agent.is_admin == True
+        ).first()
+
+        if not admin:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+
+        if not verify_password(request.password, admin.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+
+        if admin.status.value != "ACTIVE":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin account is not active"
+            )
+
+        # Create token with admin=True claim
+        token = create_token(
+            subject=f"admin:{admin.id}",
+            agent_id=str(admin.id),
+            is_admin=True,
+        )
+
+        logger.info(f"Admin logged in: {admin.phone}")
+
+        return AgentLoginResponse(
+            token=token,
+            token_type="bearer",
+            expires_in=86400,  # 24 hours
+            agent_id=str(admin.id),
+            agent_name=admin.name,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Admin login failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Login failed"
+        )
 
 
 # ===== AGENTS =====
