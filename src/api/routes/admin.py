@@ -108,6 +108,7 @@ async def admin_login(
             expires_in=86400,  # 24 hours
             agent_id=str(admin.id),
             agent_name=admin.name,
+            agent_phone=admin.phone,
         )
 
     except HTTPException:
