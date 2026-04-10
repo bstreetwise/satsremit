@@ -80,6 +80,7 @@ def create_app() -> FastAPI:
             "api.satsremit.com",
             "app.satsremit.com",
             "admin.satsremit.com",
+            "agent.satsremit.com",
             "vm-1327.lnvps.cloud",  # VPS hostname for testing
             # Keep localhost so systemd health-check scripts and internal
             # curl calls (e.g. from Nginx on the same host) work in production.
@@ -182,6 +183,14 @@ def create_app() -> FastAPI:
         logger.info(f"Public app mounted at /app from {app_path}")
     else:
         logger.warning(f"Public app static files not found at {app_path}")
+
+    # Serve agent dashboard
+    agent_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "agent")
+    if os.path.exists(agent_path):
+        app.mount("/agent", StaticFiles(directory=agent_path, html=True), name="agent")
+        logger.info(f"Agent dashboard mounted at /agent from {agent_path}")
+    else:
+        logger.warning(f"Agent dashboard static files not found at {agent_path}")
 
     # Serve admin panel static files (must be mounted after public app)
     # Use absolute path to ensure it works from any working directory
