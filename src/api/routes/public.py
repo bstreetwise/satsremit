@@ -4,7 +4,8 @@ Public API Routes - No authentication required
 
 import logging
 import uuid
-from fastapi import APIRouter, HTTPException, Query, Depends, status, Request
+from fastapi import APIRouter, HTTPException, Query, Depends, status, Request, Body
+from pydantic import BaseModel
 from decimal import Decimal
 from typing import List
 
@@ -53,9 +54,12 @@ async def health_check():
 
 # ===== TRANSFERS: Quote =====
 
+class QuoteRequest(BaseModel):
+    amount_zar: Decimal
+
 @router.post("/transfers/quote")
 async def quote_transfer(
-    amount_zar: Decimal,
+    amount_zar: Decimal = Body(..., embed=True),
     db = Depends(get_db),
 ):
     """
