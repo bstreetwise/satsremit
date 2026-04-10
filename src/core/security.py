@@ -379,3 +379,82 @@ def verify_webhook_hmac(body: bytes, signature_header: str) -> bool:
         hashlib.sha256,
     ).hexdigest()
     return hmac.compare_digest(expected_digest, provided_digest)
+
+
+# ---------------------------------------------------------------------------
+# PIN Brute-Force Protection
+# ---------------------------------------------------------------------------
+
+def _get_redis_client():
+    """Get Redis client for rate limiting (lazy import)."""
+    try:
+        import redis
+        from src.core.config import get_settings
+        settings = get_settings()
+        return redis.Redis.from_url(settings.redis_url)
+    except:
+        return None
+
+_pin_attempts = {}
+
+def track_failed_pin_attempt(transfer_id: str, max_attempts: int = 5, lockout_minutes: int = 30) -> tuple[bool, str | None]:
+    """
+    Track failed PIN attempts for a transfer.
+    Returns (is_allowed, error_message).
+    """
+    import datetime
+    key = f"pin_attempts:{transfer_id}"
+    
+    # Try Redis first
+    redis_client = _get_redis_client()
+    if redis_client:
+        try:
+            attempts = redis_client.get(key)
+            attempt_count = int(attempts) if attempts else 0
+            
+            if attempt_count >= max_attempts:
+                ttl = redis_client.ttl(key)
+                wait = max(1, int(ttl / 60)) if ttl > 0 else lockout_minutes
+                return False, f"Too many failed attempts. Try again in {wait} minutes."
+            
+            pipe = redis_client.pipeline()
+            pipe.incr(key)
+            if attempt_count == 0:
+                pipe.expire(key, lockout_minutes * 60)
+            pipe.execute()
+            return True, None
+        except:
+            pass
+    
+    # Fallback: in-memory
+    global _pin_attempts
+    now = datetime.datetime.utcnow()
+    
+    if transfer_id in _pin_attempts:
+        count, first = _pin_attempts[transfer_id]
+        if (now - first).total_seconds() < lockout_minutes * 60:
+            if count >= max_attempts:
+                return False, f"Too many failed attempts. Try again in {lockout_minutes} minutes."
+            _pin_attempts[transfer_id] = (count + 1, first)
+        else:
+            _pin_attempts[transfer_id] = (1, now)
+    else:
+        _pin_attempts[transfer_id] = (1, now)
+    
+    return True, None
+
+
+def reset_pin_attempts(transfer_id: str):
+    """Clear failed attempts after successful PIN verification."""
+    import datetime
+    key = f"pin_attempts:{transfer_id}"
+    
+    redis_client = _get_redis_client()
+    if redis_client:
+        try:
+            redis_client.delete(key)
+        except:
+            pass
+    
+    global _pin_attempts
+    _pin_attempts.pop(transfer_id, None)

@@ -24,6 +24,8 @@ from src.api.schemas import (
 from pydantic import BaseModel, Field
 from src.core.dependencies import get_db, get_transfer_service, get_rate_service
 from src.core.security import (
+    track_failed_pin_attempt,
+    reset_pin_attempts,
     hash_password,
     verify_password,
     create_token,
@@ -330,12 +332,23 @@ async def verify_transfer(
                 detail="Transfer not found"
             )
 
+        # Check for brute-force before verifying PIN
+        allowed, error_msg = track_failed_pin_attempt(transfer_id)
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=error_msg
+            )
+        
         # Verify PIN against stored bcrypt hash
         if not transfer.pin_generated or not verify_pin(transfer.pin_generated, request.pin):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid PIN"
             )
+
+        # Reset failed attempts after successful verification
+        reset_pin_attempts(transfer_id)
 
         # Mark verified
         transfer.receiver_phone_verified = request.phone_verified

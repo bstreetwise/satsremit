@@ -4,7 +4,7 @@ Public API Routes - No authentication required
 
 import logging
 import uuid
-from fastapi import APIRouter, HTTPException, Query, Depends, status
+from fastapi import APIRouter, HTTPException, Query, Depends, status, Request
 from decimal import Decimal
 from typing import List
 
@@ -16,11 +16,13 @@ from src.api.schemas import (
     TransferQuoteResponse,
     ErrorResponse,
 )
+from src.core.config import get_settings
 from src.core.dependencies import get_db, get_transfer_service, get_rate_service
 from src.services import TransferService, RateService
 from src.models.models import Transfer, Agent, AgentStatus
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 router = APIRouter()
 
@@ -103,6 +105,7 @@ async def quote_transfer(
 
 @router.post("/transfers", status_code=status.HTTP_201_CREATED)
 async def create_transfer(
+    request_obj: Request,
     request: TransferCreateRequest,
     db = Depends(get_db),
 ):
@@ -116,6 +119,20 @@ async def create_transfer(
         Invoice for sender to pay
     """
     try:
+        # Rate limit: IP + sender phone composite key
+        client_ip = request_obj.client.host if request_obj.client else "unknown"
+        allowed, error_msg = check_rate_limit(
+            client_ip=client_ip,
+            sender_phone=request.sender_phone,
+            max_requests=settings.rate_limit_requests,
+            window_minutes=settings.rate_limit_window_minutes
+        )
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=error_msg
+            )
+        
         transfer_svc = get_transfer_service(db)
         rate_svc = get_rate_service(db)
 

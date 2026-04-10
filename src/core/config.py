@@ -79,8 +79,11 @@ class Settings(BaseSettings):
 
     # Security
     jwt_secret_key: str
-    jwt_algorithm: str = "HS256"
+    jwt_algorithm: str = "HS256"  # HS256 or RS256
     jwt_expiry_hours: int = 24
+    # RSA keys for RS256 (generate with: openssl genrsa -out jwt-private.pem 2048 && openssl rsa -in jwt-private.pem -pubout -out jwt-public.pem)
+    jwt_private_key_path: str = ""
+    jwt_public_key_path: str = ""
     rate_limit_requests: int = 5
     rate_limit_window_minutes: int = 60
     webhook_secret: str
