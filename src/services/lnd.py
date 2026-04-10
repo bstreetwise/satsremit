@@ -121,7 +121,6 @@ class LNDService:
                 "value": str(amount_sats),
                 "memo": memo,
                 "expiry": str(self.hold_invoice_expiry * 60),  # Convert to seconds
-                "is_private": True,
             }
 
             if description_hash:
