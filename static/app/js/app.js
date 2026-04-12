@@ -202,15 +202,7 @@ function display_quote(quote, requestedReceiverAmount = null) {
             </div>
             <div class="divider"></div>
             <div class="quote-row">
-                <label>Platform fee (0.5%):</label>
-                <span>${format_currency(quote.platform_fee_zar)}</span>
-            </div>
-            <div class="quote-row">
-                <label>Agent commission (0.5%):</label>
-                <span>${format_currency(quote.agent_commission_zar)}</span>
-            </div>
-            <div class="quote-row">
-                <label style="color: #666;">Total fees:</label>
+                <label style="color: #666;">Total fees (1.0%):</label>
                 <span style="color: #666;">${format_currency(quote.total_fees_zar)}</span>
             </div>
             <div class="divider"></div>
