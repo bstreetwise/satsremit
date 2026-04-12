@@ -63,8 +63,8 @@ Leaving InitialBlockDownload [Main thread takes ~90% CPU during sync]
 
 ### 2. Check Current Block Height
 ```bash
-bitcoin-cli -testnet getblockcount
-# Should match https://testnet-faucet.mempool.co/ current block
+bitcoin-cli -testnet4 getblockcount
+# Should match https://mempool.space/testnet4 current block
 ```
 
 ### 3. Create LND Wallet (When Bitcoin is synced)
@@ -120,8 +120,8 @@ sudo ss -tlnp | grep bitcoind
 ### Stuck on "Leaving InitialBlockDownload"
 ```bash
 # Check current vs network block height
-bitcoin-cli -testnet getblockcount
-# vs https://testnet-faucet.mempool.co/
+bitcoin-cli -testnet4 getblockcount
+# vs https://mempool.space/testnet4
 
 # If far behind, check network connection
 bitcoin-cli -testnet getnetworkinfo | grep connections

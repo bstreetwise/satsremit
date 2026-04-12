@@ -206,8 +206,9 @@ sudo -u bitcoin lncli --lnddir=/home/bitcoin/.lnd --tlscertpath=/home/bitcoin/.l
 
 ### 2. Fund the Wallet
 Send testnet BTC to the address above using:
-- **Testnet Faucet**: https://testnet-faucet.mempool.co/
-- **Faucet 2**: https://coinfaucet.eu/en/btc-testnet/
+- **Testnet4 Faucet**: https://faucet.testnet4.dev/
+- **Faucet 2**: https://bitcoinfaucet.uo1.net/
+- **Mempool Testnet4 Explorer**: https://mempool.space/testnet4
 - **Amount**: Start with 0.01 BTC to test channels
 
 ### 3. Check Wallet Balance

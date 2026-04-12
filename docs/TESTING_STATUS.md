@@ -36,10 +36,10 @@
 ### Get Testnet BTC
 Send to: `tb1qnrlxnty5x0nusendfyfxp903vmnmx7q0qu4hks`
 
-Use one of these faucets:
-1. **Mempool Testnet Faucet**: https://testnet-faucet.mempool.co/
-2. **Coinfaucet.eu**: https://coinfaucet.eu/en/btc-testnet/
-3. **Testnet.info**: https://testnet.info/
+Use one of these testnet4 faucets:
+1. **Testnet4 Faucet**: https://faucet.testnet4.dev/
+2. **Bitcoin Testnet4 Faucet**: https://bitcoinfaucet.uo1.net/
+3. **Mempool Testnet4 Explorer**: https://mempool.space/testnet4 (to monitor transactions)
 
 **Recommended**: Send 0.01 BTC (1,000,000 satoshis) for testing
 
