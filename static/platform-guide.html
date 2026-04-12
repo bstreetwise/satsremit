@@ -255,9 +255,6 @@
             <i class="fas fa-bolt"></i> SatsRemit
         </a>
         <a href="/app"><i class="fas fa-home"></i> Home</a>
-        <a href="/api/admin"><i class="fas fa-chart-line"></i> Admin</a>
-        <a href="/agent"><i class="fas fa-briefcase"></i> Agent</a>
-        <a href="/receiver"><i class="fas fa-check-circle"></i> Receiver</a>
     </header>
     <div class="container">
         <div class="header">
@@ -276,33 +273,6 @@
                         <div class="flow-links">
                             <a href="/app" class="link-btn">Open Sender App</a>
                             <a href="#sender-flow" class="link-btn secondary">View Flow</a>
-                        </div>
-                    </div>
-                    
-                    <div class="flow-card">
-                        <h2>💼 Agent</h2>
-                        <p>Manage transfers and verify receivers</p>
-                        <div class="flow-links">
-                            <a href="/agent" class="link-btn">Open Agent Dashboard</a>
-                            <a href="#agent-flow" class="link-btn secondary">View Flow</a>
-                        </div>
-                    </div>
-                    
-                    <div class="flow-card">
-                        <h2>✓ Receiver</h2>
-                        <p>Verify transfer receipt and confirm payment</p>
-                        <div class="flow-links">
-                            <a href="/receiver" class="link-btn">Open Receiver Portal</a>
-                            <a href="#receiver-flow" class="link-btn secondary">View Flow</a>
-                        </div>
-                    </div>
-                    
-                    <div class="flow-card">
-                        <h2>⚙️ Admin</h2>
-                        <p>Manage platform, agents, and volumes</p>
-                        <div class="flow-links">
-                            <a href="/admin" class="link-btn">Open Admin Panel</a>
-                            <a href="#admin-flow" class="link-btn secondary">View Flow</a>
                         </div>
                     </div>
                 </div>
@@ -330,73 +300,7 @@
                 </div>
             </div>
             
-            <!-- Receiver Flow -->
-            <div id="receiver-flow" class="section">
-                <h2>✓ Receiver Flow</h2>
-                <ol class="flow-steps">
-                    <li>Sender pays Lightning invoice</li>
-                    <li>Backend: Generate 4-digit PIN and send via WhatsApp</li>
-                    <li>Receiver enters reference number and phone on <strong>/receiver</strong></li>
-                    <li>View transfer details (amount, reference, status)</li>
-                    <li>Enter 4-digit PIN from WhatsApp message</li>
-                    <li>PIN verified → Transfer marked as RECEIVER_VERIFIED</li>
-                    <li>Agent can now proceed with cash payout</li>
-                    <li>Receiver confirmspay out completion</li>
-                </ol>
-                <div class="endpoint-card">
-                    <strong>Key Endpoints:</strong><br>
-                    GET /api/receivers/transfers/{ref}/status<br>
-                    POST /api/receivers/verify-pin<br>
-                    POST /api/receivers/resend-pin
-                </div>
-            </div>
-            
-            <!-- Agent Flow -->
-            <div id="agent-flow" class="section">
-                <h2>💼 Agent Flow</h2>
-                <ol class="flow-steps">
-                    <li>Login at <strong>/agent</strong> with phone + password</li>
-                    <li>View pending transfers in dashboard</li>
-                    <li>Status: Payment received, waiting for receiver verification</li>
-                    <li>Receiver submits PIN → Receiver verified</li>
-                    <li>Agent verifies receiver phone in app</li>
-                    <li>Transfer status: RECEIVER_VERIFIED</li>
-                    <li>Proceed with cash payout to receiver</li>
-                    <li>Confirm payout completion in app</li>
-                    <li>Earn commission sats on settlement</li>
-                </ol>
-                <div class="endpoint-card">
-                    <strong>Key Endpoints:</strong><br>
-                    POST /api/agent/auth/login<br>
-                    GET /api/agent/balance<br>
-                    GET /api/agent/transfers<br>
-                    POST /api/agent/transfers/{id}/verify
-                </div>
-            </div>
-            
-            <!-- Admin Flow -->
-            <div id="admin-flow" class="section">
-                <h2>⚙️ Admin Flow</h2>
-                <ol class="flow-steps">
-                    <li>Login at <strong>/admin</strong> with admin credentials</li>
-                    <li>Dashboard: View daily/weekly/monthly volumes</li>
-                    <li>Agents section: Create agents, manage balances</li>
-                    <li>Transfers section: Monitor all transfers in real-time</li>
-                    <li>Settlements section: View pending payouts</li>
-                    <li>Analytics: Generate reports on volumes and fees</li>
-                    <li>Advanced: Manager agent cash balances and disbursements</li>
-                </ol>
-                <div class="endpoint-card">
-                    <strong>Key Endpoints:</strong><br>
-                    POST /api/admin/agents<br>
-                    PUT /api/admin/agents/{id}/balance<br>
-                    GET /api/admin/transfers<br>
-                    POST /api/admin/agents/{id}/advance
-                </div>
-            </div>
-            
-            <!-- Transfer States -->
-            <div class="section">
+            <!-- Transfer States -->            <div class="section">
                 <h2>🔄 Transfer State Machine</h2>
                 <p>Every transfer progresses through these states:</p>
                 <table class="status-table">
