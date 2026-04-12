@@ -20,16 +20,24 @@ logger = logging.getLogger(__name__)
 # Re-export get_db from database module
 def get_db():
     """
-    Database session dependency
+    Database session dependency - Generator for FastAPI dependency injection
 
     Usage:
         @app.get("/items")
-        async def get_items(db: Session = Depends(get_db)):
+        def get_items(db: Session = Depends(get_db)):
             ...
     """
-    # Call _get_db() which is a generator function (has yield)
-    # FastAPI will handle the generator context manager protocol
-    yield from _get_db()
+    # _get_db() is a generator (has yield), so we can yield  from it
+    # This properly handles session lifecycle with FastAPI
+    db_gen = _get_db()
+    db = next(db_gen)
+    try:
+        yield db
+    finally:
+        try:
+            next(db_gen)
+        except StopIteration:
+            pass
 
 
 def get_lnd_service() -> LNDService:

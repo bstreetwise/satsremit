@@ -1,7 +1,12 @@
 /**
  * SatsRemit Admin UI Module
  * Handles all UI interactions and rendering
+ * VERSION: 2.1 (agent.agent_id fix) - Deployed 2026-04-11
  */
+
+// ===== VERSION CHECK =====
+window.UI_VERSION = "2.1-agent-fix";
+console.log(`✓ UI Module Loaded - Version: ${window.UI_VERSION}`);
 
 // ===== GLOBAL UI STATE =====
 const UI_STATE = {
@@ -9,6 +14,52 @@ const UI_STATE = {
     itemsPerPage: 20,
     currentFilter: {},
 };
+
+// ===== ADMIN CHECK =====
+function is_current_user_admin() {
+    try {
+        const token = localStorage.getItem('admin_token');
+        if (!token) return false;
+        
+        // JWT format: header.payload.signature
+        const parts = token.split('.');
+        if (parts.length !== 3) return false;
+        
+        // Decode payload
+        const payloadStr = atob(parts[1]);
+        const payload = JSON.parse(payloadStr);
+        
+        return payload.is_admin === true;
+    } catch (error) {
+        console.warn('Failed to check admin status:', error);
+        return false;
+    }
+}
+
+function get_current_admin_agent_id() {
+    try {
+        const token = localStorage.getItem('admin_token');
+        if (!token) return null;
+        
+        // JWT format: header.payload.signature
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        
+        // Decode payload
+        const payloadStr = atob(parts[1]);
+        const payload = JSON.parse(payloadStr);
+        
+        return payload.agent_id || null;
+    } catch (error) {
+        console.warn('Failed to get admin agent ID:', error);
+        return null;
+    }
+}
+
+function can_send_cash_to_agent(agentId) {
+    // Only show for admin users sending to OTHER agents (not themselves)
+    return is_current_user_admin() && agentId !== get_current_admin_agent_id();
+}
 
 // ===== DOM UTILITIES =====
 
@@ -97,6 +148,7 @@ function navigate_to_section(section) {
         agents: 'Agent Management',
         transfers: 'Transfer History',
         settlements: 'Settlement Records',
+        'audit-trail': 'Cash Advances Audit Trail',
         analytics: 'Analytics & Insights',
     };
     document.getElementById('page-title').textContent = titles[section] || section;
@@ -118,6 +170,9 @@ function load_section_data(section) {
             break;
         case 'settlements':
             load_settlements_table();
+            break;
+        case 'audit-trail':
+            load_audit_trail();
             break;
         case 'analytics':
             load_analytics();
@@ -197,6 +252,12 @@ async function load_agents_table() {
                 }
 
                 const row = document.createElement('tr');
+                const sendCashButton = can_send_cash_to_agent(agent.agent_id) ? `
+                        <button class="btn btn-sm btn-success" onclick="open_send_cash_modal('${agent.agent_id}', '${agent.name}', '${balance.cash_owed_zar || agent.cash_balance_zar || 0}')">
+                            <i class="fas fa-money-bill"></i> Send Cash
+                        </button>
+                    ` : '';
+                
                 row.innerHTML = `
                     <td><strong>${agent.name}</strong></td>
                     <td>${agent.phone}</td>
@@ -208,6 +269,7 @@ async function load_agents_table() {
                         <button class="btn btn-sm btn-info" onclick="show_agent_details('${agent.agent_id}')">
                             <i class="fas fa-eye"></i> View
                         </button>
+                        ${sendCashButton}
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -386,6 +448,38 @@ async function load_top_agents() {
     }
 }
 
+// ===== AUDIT TRAIL =====
+
+async function load_audit_trail() {
+    try {
+        const advances = await API.getCashAdvancesAuditTrail(1000, 0);
+        const tbody = document.getElementById('audit-trail-tbody');
+        tbody.innerHTML = '';
+
+        if (!advances || advances.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8">No cash advances recorded</td></tr>';
+            return;
+        }
+
+        for (const advance of advances) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><code style="font-size: 11px; background-color: #f0f0f0; padding: 2px 4px; border-radius: 3px;">${advance.transaction_id}</code></td>
+                <td><strong>${advance.admin_agent_name}</strong><br><small>${advance.admin_agent_phone}</small></td>
+                <td><strong>${advance.recipient_agent_name}</strong><br><small>${advance.recipient_agent_phone}</small></td>
+                <td>${format_currency(advance.amount_zar)}</td>
+                <td><small>${format_currency(advance.admin_balance_before)} → ${format_currency(advance.admin_balance_after)}</small></td>
+                <td><small>${format_currency(advance.recipient_balance_before)} → ${format_currency(advance.recipient_balance_after)}</small></td>
+                <td>${advance.note || '—'}</td>
+                <td>${format_date(advance.created_at)}</td>
+            `;
+            tbody.appendChild(row);
+        }
+    } catch (error) {
+        show_alert(`Failed to load audit trail: ${error.message}`, 'error');
+    }
+}
+
 // ===== MODALS =====
 
 function open_modal(modalId) {
@@ -444,9 +538,122 @@ async function handle_add_agent(event) {
     }
 }
 
+// ===== CASH ADVANCE HANDLERS =====
+
+// Store current agent ID for form submission
+let current_advance_agent_id = null;
+let current_admin_balance = 0;
+
+async function open_send_cash_modal(agentId, agentName, currentBalance) {
+    // Admin-only check
+    if (!is_current_user_admin()) {
+        show_alert('Only admin users can send cash advances to agents', 'error');
+        return;
+    }
+    
+    // Prevent admin from sending cash to themselves
+    const currentAdminId = get_current_admin_agent_id();
+    if (agentId === currentAdminId) {
+        show_alert('Cannot send cash to your own admin account', 'error');
+        return;
+    }
+    
+    current_advance_agent_id = agentId;
+    
+    // Safely set form fields with null checks
+    const agentForAdvance = document.getElementById('agent-for-advance');
+    const currentBalanceField = document.getElementById('current-balance');
+    const advanceAmount = document.getElementById('advance-amount');
+    const advanceNote = document.getElementById('advance-note');
+    
+    if (agentForAdvance) agentForAdvance.value = agentName;
+    if (currentBalanceField) currentBalanceField.value = `ZAR ${parseFloat(currentBalance).toFixed(2)}`;
+    if (advanceAmount) advanceAmount.value = '';
+    if (advanceNote) advanceNote.value = '';
+    
+    // Fetch admin's balance and show it
+    const adminBalanceElement = document.getElementById('admin-balance');
+    if (adminBalanceElement) {
+        try {
+            adminBalanceElement.textContent = 'Loading...';
+            // Fetch the current admin's balance
+            const currentAdminBalance = await API.getAgentBalance(currentAdminId);
+            if (currentAdminBalance && currentAdminBalance.cash_owed_zar) {
+                adminBalanceElement.textContent = `ZAR ${parseFloat(currentAdminBalance.cash_owed_zar).toFixed(2)}`;
+            } else {
+                adminBalanceElement.textContent = 'ZAR 0.00';
+            }
+        } catch (error) {
+            console.warn('Could not load admin balance:', error);
+            adminBalanceElement.textContent = 'ZAR 0.00';
+        }
+    }
+    
+    open_modal('send-cash-modal');
+}
+
+async function handle_send_cash_advance(event) {
+    event.preventDefault();
+
+    // Admin-only check
+    if (!is_current_user_admin()) {
+        show_alert('Only admin users can send cash advances', 'error');
+        return;
+    }
+
+    // Prevent admin from sending cash to themselves
+    const currentAdminId = get_current_admin_agent_id();
+    if (current_advance_agent_id === currentAdminId) {
+        show_alert('Cannot send cash to your own admin account', 'error');
+        return;
+    }
+
+    const amount = parseFloat(document.getElementById('advance-amount').value);
+    const note = document.getElementById('advance-note').value || 'Cash advance from admin';
+
+    // Validate
+    if (isNaN(amount) || amount < 10) {
+        show_alert('Advance amount must be at least 10 ZAR', 'error');
+        return;
+    }
+
+    if (!current_advance_agent_id) {
+        show_alert('No agent selected', 'error');
+        return;
+    }
+
+    try {
+        show_spinner(true);
+        const response = await API.recordAgentAdvance(
+            current_advance_agent_id,
+            amount,
+            note
+        );
+        show_spinner(false);
+        show_alert(`✓ Cash advance of ZAR ${amount.toFixed(2)} sent successfully! New balance: ZAR ${parseFloat(response.new_balance_zar).toFixed(2)}`, 'success');
+        close_modal('send-cash-modal');
+        // Refresh agents table
+        load_agents_table();
+    } catch (error) {
+        show_spinner(false);
+        console.error('Cash advance failed:', error);
+        
+        // Provide better error messages for common cases
+        let errorMsg = error.message;
+        if (errorMsg.includes('Insufficient balance')) {
+            errorMsg = `❌ ${errorMsg}. Please check your (admin) cash balance.`;
+        } else if (errorMsg.includes('not found')) {
+            errorMsg = 'Agent not found. Agent may have been deleted.';
+        }
+        
+        show_alert(`Failed to send advance: ${errorMsg}`, 'error');
+    }
+}
+
 // Export functions
 window.UI = {
     navigate_to_section,
+    load_section_data,
     show_alert,
     show_spinner,
     format_currency,
@@ -459,4 +666,13 @@ window.UI = {
     show_agent_details,
     show_transfer_details,
     confirm_settlement,
+    load_dashboard,
+    load_agents_table,
+    load_transfers_table,
+    load_settlements_table,
+    load_analytics,
+    load_top_agents,
+    load_audit_trail,
+    open_send_cash_modal,
+    handle_send_cash_advance,
 };

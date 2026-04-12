@@ -50,8 +50,19 @@ const API = {
             }
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || error.error || 'API Error');
+                let errorDetail = 'Unknown error';
+                try {
+                    const errorData = await response.json();
+                    // Try multiple possible error fields
+                    errorDetail = errorData.detail || 
+                                 errorData.error || 
+                                 errorData.message ||
+                                 `HTTP ${response.status}`;
+                } catch (e) {
+                    // If response isn't JSON, use status text
+                    errorDetail = response.statusText || `HTTP ${response.status}`;
+                }
+                throw new Error(errorDetail);
             }
 
             const data = await response.json();
@@ -111,6 +122,16 @@ const API = {
             method: 'POST',
             body: { zar_amount, note },
         });
+    },
+
+    /**
+     * Get cash advances audit trail
+     */
+    async getCashAdvancesAuditTrail(limit = 100, offset = 0) {
+        const params = new URLSearchParams();
+        params.append('limit', limit);
+        params.append('offset', offset);
+        return this.request(`/admin/cash-advances/audit-trail?${params}`);
     },
 
     // ===== TRANSFERS =====

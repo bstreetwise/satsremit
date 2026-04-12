@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>SatsRemit Admin Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
@@ -30,8 +33,24 @@
                 <li><a href="#" data-section="settlements" class="nav-link">
                     <i class="fas fa-receipt"></i> Settlements
                 </a></li>
+                <li><a href="#" data-section="audit-trail" class="nav-link">
+                    <i class="fas fa-history"></i> Cash Advances
+                </a></li>
                 <li><a href="#" data-section="analytics" class="nav-link">
                     <i class="fas fa-analytics"></i> Analytics
+                </a></li>
+                <li class="separator"></li>
+                <li><a href="/app" style="display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.7); text-decoration: none; padding: 12px 16px; font-size: 14px; border-radius: 4px; transition: all 0.3s;" onmouseover="this.style.backgroundColor='rgba(247,147,26,0.2)'; this.style.color='white'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-paper-plane"></i> Send Money
+                </a></li>
+                <li><a href="/agent" style="display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.7); text-decoration: none; padding: 12px 16px; font-size: 14px; border-radius: 4px; transition: all 0.3s;" onmouseover="this.style.backgroundColor='rgba(247,147,26,0.2)'; this.style.color='white'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-briefcase"></i> Agent Dashboard
+                </a></li>
+                <li><a href="/receiver" style="display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.7); text-decoration: none; padding: 12px 16px; font-size: 14px; border-radius: 4px; transition: all 0.3s;" onmouseover="this.style.backgroundColor='rgba(247,147,26,0.2)'; this.style.color='white'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-check-circle"></i> Receiver Portal
+                </a></li>
+                <li><a href="/platform-guide.html" style="display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.7); text-decoration: none; padding: 12px 16px; font-size: 14px; border-radius: 4px; transition: all 0.3s;" onmouseover="this.style.backgroundColor='rgba(247,147,26,0.2)'; this.style.color='white'" onmouseout="this.style.backgroundColor='transparent'; this.style.color='rgba(255,255,255,0.7)'">
+                    <i class="fas fa-book"></i> Platform Guide
                 </a></li>
                 <li class="separator"></li>
                 <li><a href="#" id="logout-btn">
@@ -182,6 +201,44 @@
                     </div>
                 </div>
 
+                <!-- Send Cash Advance Modal -->
+                <div id="send-cash-modal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Send Cash Advance</h3>
+                            <button class="close-btn">&times;</button>
+                        </div>
+                        <form id="send-cash-form" class="form">
+                            <div class="form-group">
+                                <label>Your (Admin) Balance</label>
+                                <div style="padding: 10px; background-color: #e8f5e9; border-radius: 4px; font-weight: bold; color: #2e7d32;" id="admin-balance">
+                                    ZAR 0.00
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="agent-for-advance">Recipient Agent</label>
+                                <input type="text" id="agent-for-advance" disabled style="background-color: #f0f0f0;">
+                            </div>
+                            <div class="form-group">
+                                <label for="current-balance">Agent's Current Balance</label>
+                                <input type="text" id="current-balance" disabled style="background-color: #f0f0f0;">
+                            </div>
+                            <div class="form-group">
+                                <label for="advance-amount">Amount to Send (ZAR)</label>
+                                <input type="number" id="advance-amount" placeholder="500" min="10" step="10" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="advance-note">Note/Reason</label>
+                                <textarea id="advance-note" placeholder="Optional: e.g., Agent running low on cash" rows="3"></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary">Send Advance</button>
+                                <button type="button" class="btn btn-secondary close-btn">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
                 <!-- Agents Table -->
                 <div class="card">
                     <div class="card-body">
@@ -215,10 +272,13 @@
                         <select id="transfer-filter-state">
                             <option value="">All States</option>
                             <option value="INITIATED">Initiated</option>
-                            <option value="PAID">Paid</option>
+                            <option value="INVOICE_GENERATED">Invoice Generated</option>
+                            <option value="PAYMENT_LOCKED">Payment Locked</option>
+                            <option value="RECEIVER_VERIFIED">Receiver Verified</option>
+                            <option value="PAYOUT_EXECUTED">Payout Executed</option>
                             <option value="SETTLED">Settled</option>
-                            <option value="RECEIVER_VERIFIED">Verified</option>
-                            <option value="PAYOUT_EXECUTED">Executed</option>
+                            <option value="FINAL">Final</option>
+                            <option value="REFUNDED">Refunded</option>
                         </select>
                         <input type="text" id="transfer-search" placeholder="Search by reference...">
                     </div>
@@ -278,6 +338,36 @@
                                     <td colspan="7">Loading settlements...</td>
                                 </tr>
                             </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cash Advances Audit Trail Section -->
+            <section id="audit-trail" class="section">
+                <div class="section-header">
+                    <h2>Cash Advances Audit Trail</h2>
+                </div>
+
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h3>All Cash Advances from Admin</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="table" id="audit-trail-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Admin Agent</th>
+                                    <th>Recipient Agent</th>
+                                    <th>Amount (ZAR)</th>
+                                    <th>Admin Balance</th>
+                                    <th>Recipient Balance</th>
+                                    <th>Note</th>
+                                    <th>Date & Time</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-trail-tbody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -347,8 +437,8 @@
         <div class="spinner-inner"></div>
     </div>
 
-    <script src="js/api.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/api.js?bust=1775919415"></script>
+    <script src="js/ui-new.js?bust=1775919415"></script>
+    <script src="js/app.js?bust=1775919415"></script>
 </body>
 </html>

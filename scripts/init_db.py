@@ -86,6 +86,27 @@ def seed_test_data():
         
         print("\nSeeding test data...")
         
+        # Create admin user if doesn't exist
+        existing_admin = session.query(Agent).filter_by(phone="+263712000000").first()
+        if not existing_admin:
+            admin = Agent(
+                phone="+263712000000",
+                name="Admin User",
+                location_code="ZWE_ADM",
+                location_name="Admin",
+                password_hash=hash_password("Admin1234"),
+                status=AgentStatus.ACTIVE,
+                is_admin=True,
+                must_change_password=False,
+                cash_balance_zar=0.00,
+                commission_balance_sats=0
+            )
+            session.add(admin)
+            session.commit()
+            print("✓ Admin user created: +263712000000 (password: Admin1234)")
+        else:
+            print("✓ Admin user already exists")
+        
         # Create test agent if doesn't exist
         existing_agent = session.query(Agent).filter_by(phone="+263784000001").first()
         if not existing_agent:

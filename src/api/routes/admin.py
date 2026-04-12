@@ -4,8 +4,10 @@ Admin API Routes - Admin-only operations
 
 import logging
 import uuid
+import os
 from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException, Depends, status, Query
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List
@@ -17,6 +19,7 @@ from src.api.schemas import (
     AdminAgentAdvanceRequest,
     AdminAgentAdvanceResponse,
     AdminTransferListResponse,
+    AdminSettlementListResponse,
     AdminVolumeResponse,
     AgentLoginRequest,
     AgentLoginResponse,
@@ -33,7 +36,9 @@ from src.models.models import (
     AgentStatus,
     Transfer,
     Settlement,
+    SettlementStatus,
     TransferState,
+    CashAdvance,
 )
 from decimal import Decimal
 
@@ -42,10 +47,37 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# ===== ADMIN PANEL PAGE =====
+
+@router.get("/")
+async def admin_panel():
+    """
+    Serve admin panel HTML with aggressive no-cache headers.
+    This ensures browsers load the latest version bypassing Cloudflare cache.
+    """
+    admin_index = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "static",
+        "admin",
+        "index.html"
+    )
+    
+    return FileResponse(
+        admin_index,
+        media_type="text/html",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0, public",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "ETag": f'"{os.path.getmtime(admin_index)}"',  # Force revalidation
+        }
+    )
+
+
 # ===== AUTHENTICATION =====
 
 @router.post("/auth/login", response_model=AgentLoginResponse)
-async def admin_login(
+def admin_login(
     request: AgentLoginRequest,
     db: Session = Depends(get_db),
 ):
@@ -144,6 +176,7 @@ async def list_agents(
                 agent_id=str(agent.id),
                 phone=agent.phone,
                 name=agent.name,
+                location_code=agent.location_code,
                 status=agent.status.value,
                 cash_balance_zar=agent.cash_balance_zar,
             ))
@@ -170,6 +203,13 @@ async def create_agent(
     Admin creates new agent with initial cash balance.
     """
     try:
+        # Validate phone format
+        if not request.phone or len(request.phone) < 10:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid phone format (minimum 10 characters)"
+            )
+        
         # Check phone not already registered
         existing = db.query(Agent).filter(Agent.phone == request.phone).first()
         if existing:
@@ -177,6 +217,47 @@ async def create_agent(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Agent phone already registered"
             )
+
+        # Validate initial cash
+        try:
+            cash_amount = Decimal(str(request.initial_cash_zar)) if request.initial_cash_zar else Decimal("0.00")
+            if cash_amount < 0:
+                raise ValueError("Cash amount cannot be negative")
+        except (ValueError, TypeError) as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid cash amount: {str(e)}"
+            )
+
+        # Hash password safely  
+        # Use very short temporary password to avoid bcrypt issues
+        # This will be changed on first login anyway (must_change_password=True)
+        try:
+            temp_pass = "TempPass123"  # 11 characters, well under 72-byte limit
+            password_hash = hash_password(temp_pass)
+        except ValueError as e:
+            if "72 bytes" in str(e):
+                # Fallback: use shorter password with PBKDF2 hasher
+                # Agent will be forced to change password on first login anyway
+                logger.warning(f"Bcrypt issue creating agent {request.phone}, using PBKDF2 fallback")
+                from passlib.context import CryptContext
+                pbkdf2_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+                password_hash = pbkdf2_context.hash("Pass123")
+            else:
+                raise
+        except Exception as e:
+            logger.error(f"Password hashing failed: {e}, attempting PBKDF2 fallback")
+            try:
+                from passlib.context import CryptContext
+                pbkdf2_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+                password_hash = pbkdf2_context.hash("Pass123")
+                logger.warning(f"Using PBKDF2 fallback for agent {request.phone}")
+            except Exception as fallback_error:
+                logger.error(f"Fallback also failed: {fallback_error}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to process password"
+                )
 
         # Create agent with a temporary password.
         # must_change_password=True forces the agent to set their own password
@@ -186,10 +267,10 @@ async def create_agent(
             phone=request.phone,
             name=request.name,
             email=None,
-            password_hash=hash_password("TempPassword123!"),
+            password_hash=password_hash,
             location_code=request.location_code,
             location_name=request.location_code,  # TODO: Map code to human-readable name
-            cash_balance_zar=request.initial_cash_zar or Decimal("0.00"),
+            cash_balance_zar=cash_amount,
             commission_balance_sats=0,
             status=AgentStatus.ACTIVE,
             is_admin=False,
@@ -207,6 +288,7 @@ async def create_agent(
             agent_id=str(agent.id),
             phone=agent.phone,
             name=agent.name,
+            location_code=agent.location_code,
             status=agent.status.value,
             cash_balance_zar=agent.cash_balance_zar,
         )
@@ -215,11 +297,33 @@ async def create_agent(
         raise
     except Exception as e:
         db.rollback()
-        logger.error(f"Agent creation failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create agent"
-        )
+        error_type = type(e).__name__
+        error_msg = str(e)
+        full_error = f"{error_type}: {error_msg}"
+        logger.error(f"Agent creation failed: {full_error}", exc_info=True)
+        
+        # Determine if it's a known database error
+        if "unique constraint" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Agent with this phone number already exists"
+            )
+        elif "not null constraint" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Missing required field (phone, name, or location)"
+            )
+        elif "database is locked" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database temporarily unavailable, please try again"
+            )
+        else:
+            # Pass through the actual error for debugging
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Agent creation error: {error_type} - {error_msg}"
+            )
 
 
 @router.get("/agents/{agent_id}/balance", response_model=AdminAgentBalanceResponse)
@@ -242,26 +346,25 @@ async def get_agent_balance_admin(
                 detail="Agent not found"
             )
 
-        # Calculate pending
-        pending = db.query(Settlement).filter(
+        # Calculate pending settlements count
+        pending_settlements = db.query(Settlement).filter(
             Settlement.agent_id == agent.id,
             Settlement.status == "PENDING"
-        ).first()
-
-        pending_zar = pending.amount_zar_owed if pending else Decimal("0.00")
+        ).count()
 
         # Commission in ZAR using live exchange rate
         rate_svc = get_rate_service(db)
         live_rate = await rate_svc.get_zar_per_btc()
-        commission_zar = Decimal(agent.commission_balance_sats) / Decimal("100000000") * live_rate
+        commission_zar = Decimal(agent.commission_balance_sats or 0) / Decimal("100000000") * live_rate
 
+        # Return agent's current cash balance (not pending settlements)
         return AdminAgentBalanceResponse(
             agent_id=str(agent.id),
             agent_name=agent.name,
-            cash_owed_zar=pending_zar,
-            sats_earned=agent.commission_balance_sats,
+            cash_owed_zar=agent.cash_balance_zar or Decimal("0.00"),
+            sats_earned=agent.commission_balance_sats or 0,
             commission_zar=commission_zar,
-            settlements_pending=1 if pending else 0,
+            settlements_pending=pending_settlements,
         )
 
     except HTTPException:
@@ -282,39 +385,153 @@ async def record_agent_advance(
     current_admin: dict = Depends(get_current_admin),
 ):
     """
-    Record cash advance or corrective entry
+    Send cash advance to agent
 
-    Admin records manual balance adjustment (e.g., cash advance, correction).
+    Admin sends cash to an agent. The amount is deducted from the admin's balance
+    and added to the recipient agent's balance. Transaction is recorded in audit trail.
     """
     try:
-        agent = db.query(Agent).filter(Agent.id == uuid.UUID(agent_id)).first()
-
-        if not agent:
+        # Get the recipient agent
+        recipient = db.query(Agent).filter(Agent.id == uuid.UUID(agent_id)).first()
+        if not recipient:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Agent not found"
             )
 
-        # Update balance
-        agent.cash_balance_zar += request.zar_amount
+        # Get the admin's agent record
+        admin_agent = db.query(Agent).filter(Agent.id == uuid.UUID(current_admin.get("agent_id"))).first()
+        if not admin_agent:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Admin agent not found"
+            )
+
+        # Prevent admin from sending cash to themselves
+        if admin_agent.id == recipient.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot send cash to your own admin account"
+            )
+
+        # Validate admin has sufficient balance
+        if admin_agent.cash_balance_zar is None:
+            admin_agent.cash_balance_zar = Decimal("0.00")
+        
+        if admin_agent.cash_balance_zar < Decimal(str(request.zar_amount)):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Insufficient balance. Admin has ZAR {admin_agent.cash_balance_zar}, but trying to send ZAR {request.zar_amount}"
+            )
+
+        # Store balances BEFORE transaction
+        admin_balance_before = admin_agent.cash_balance_zar
+        if recipient.cash_balance_zar is None:
+            recipient.cash_balance_zar = Decimal("0.00")
+        recipient_balance_before = recipient.cash_balance_zar
+
+        # Deduct from admin's balance
+        admin_agent.cash_balance_zar -= Decimal(str(request.zar_amount))
+
+        # Add to recipient's balance
+        recipient.cash_balance_zar += Decimal(str(request.zar_amount))
+
+        # Generate transaction ID
+        transaction_id = f"ADV-{uuid.uuid4().hex[:8].upper()}"
+
+        # Create audit trail record
+        cash_advance = CashAdvance(
+            admin_agent_id=admin_agent.id,
+            recipient_agent_id=recipient.id,
+            amount_zar=Decimal(str(request.zar_amount)),
+            admin_balance_before=admin_balance_before,
+            admin_balance_after=admin_agent.cash_balance_zar,
+            recipient_balance_before=recipient_balance_before,
+            recipient_balance_after=recipient.cash_balance_zar,
+            note=request.note or None,
+            transaction_id=transaction_id,
+        )
+
+        # Commit all changes
+        db.add(admin_agent)
+        db.add(recipient)
+        db.add(cash_advance)
         db.commit()
 
-        logger.info(f"Agent advance recorded: {agent.phone} {request.zar_amount} ZAR - {request.note}")
+        logger.info(
+            f"Cash advance recorded: Transaction {transaction_id} | "
+            f"Admin {admin_agent.phone} → Agent {recipient.phone} | "
+            f"Amount: ZAR {request.zar_amount} | Note: {request.note}"
+        )
 
         return AdminAgentAdvanceResponse(
-            agent_id=str(agent.id),
-            new_balance_zar=agent.cash_balance_zar,
-            transaction_id=f"ADV-{uuid.uuid4().hex[:8].upper()}",
+            agent_id=str(recipient.id),
+            new_balance_zar=recipient.cash_balance_zar,
+            transaction_id=transaction_id,
         )
 
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
-        logger.error(f"Advance recording failed: {e}")
+        logger.error(f"Advance recording failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to record advance"
+        )
+
+
+@router.get("/cash-advances/audit-trail")
+async def get_cash_advances_audit_trail(
+    limit: int = Query(100, le=1000),
+    offset: int = Query(0),
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin),
+):
+    """
+    Get audit trail of all cash advances sent by admin agents
+
+    Returns all cash advance transactions with full balance tracking.
+    """
+    try:
+        from src.api.schemas import CashAdvanceAuditEntry
+        
+        # Query all cash advances ordered by most recent first
+        advances = db.query(CashAdvance).order_by(
+            CashAdvance.created_at.desc()
+        ).limit(limit).offset(offset).all()
+        
+        result = []
+        for advance in advances:
+            # Get admin and recipient details
+            admin = db.query(Agent).filter(Agent.id == advance.admin_agent_id).first()
+            recipient = db.query(Agent).filter(Agent.id == advance.recipient_agent_id).first()
+            
+            if admin and recipient:
+                entry = CashAdvanceAuditEntry(
+                    transaction_id=advance.transaction_id,
+                    admin_agent_name=admin.name,
+                    admin_agent_phone=admin.phone,
+                    recipient_agent_name=recipient.name,
+                    recipient_agent_phone=recipient.phone,
+                    amount_zar=advance.amount_zar,
+                    admin_balance_before=advance.admin_balance_before,
+                    admin_balance_after=advance.admin_balance_after,
+                    recipient_balance_before=advance.recipient_balance_before,
+                    recipient_balance_after=advance.recipient_balance_after,
+                    note=advance.note,
+                    created_at=advance.created_at,
+                )
+                result.append(entry)
+        
+        logger.info(f"Audit trail retrieved: {len(result)} cash advances")
+        return result
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve audit trail: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve audit trail"
         )
 
 
@@ -339,7 +556,12 @@ async def list_transfers_admin(
 
         # Filters
         if state:
-            query = query.filter(Transfer.state == TransferState[state.upper()])
+            try:
+                transfer_state = TransferState[state.upper()]
+                query = query.filter(Transfer.state == transfer_state)
+            except KeyError:
+                # Invalid state provided, return empty result
+                return []
 
         if agent_id:
             query = query.filter(Transfer.agent_id == uuid.UUID(agent_id))
@@ -368,6 +590,62 @@ async def list_transfers_admin(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to list transfers"
+        )
+
+
+# ===== SETTLEMENTS =====
+
+@router.get("/settlements", response_model=List[AdminSettlementListResponse])
+async def list_settlements_admin(
+    agent_id: str = Query(None, description="Filter by agent"),
+    status: str = Query(None, description="Filter by status"),
+    limit: int = Query(100, le=1000),
+    offset: int = Query(0),
+    db: Session = Depends(get_db),
+    current_admin: dict = Depends(get_current_admin),
+):
+    """
+    List all settlements - admin view
+
+    Supports filtering by agent and status.
+    """
+    try:
+        query = db.query(Settlement)
+
+        # Filters
+        if agent_id:
+            query = query.filter(Settlement.agent_id == uuid.UUID(agent_id))
+
+        if status:
+            query = query.filter(Settlement.status == SettlementStatus[status.upper()])
+
+        # Pagination
+        settlements = query.order_by(Settlement.created_at.desc()).offset(offset).limit(limit).all()
+
+        results = []
+        for s in settlements:
+            agent = db.query(Agent).filter(Agent.id == s.agent_id).first()
+            period = f"{s.period_start.strftime('%Y-%m-%d')} to {s.period_end.strftime('%Y-%m-%d')}"
+            
+            results.append(AdminSettlementListResponse(
+                settlement_id=str(s.id),
+                agent_name=agent.name if agent else "Unknown",
+                agent_phone=agent.phone if agent else "Unknown",
+                period=period,
+                amount_zar=s.amount_zar_owed,
+                status=s.status.value if hasattr(s.status, 'value') else str(s.status),
+                created_at=s.created_at,
+                confirmed_at=s.confirmed_at,
+                completed_at=s.completed_at,
+            ))
+
+        return results
+
+    except Exception as e:
+        logger.error(f"Settlement listing failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to list settlements"
         )
 
 

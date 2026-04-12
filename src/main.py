@@ -59,12 +59,29 @@ def create_app() -> FastAPI:
     
     # ========== MIDDLEWARE ==========
     
+    # Cache control for static files
+    @app.middleware("http")
+    async def cache_control_middleware(request: Request, call_next):
+        response = await call_next(request)
+        
+        # Don't cache HTML, JS, or CSS during development
+        if request.url.path.endswith(('.html', '.js', '.jsx')):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        
+        return response
+    
     # CORS
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"] if settings.debug else [
+            "https://satsremit.com",
+            "https://www.satsremit.com",
             "https://app.satsremit.com",
             "https://admin.satsremit.com",
+            "https://agent.satsremit.com",
+            "https://receiver.satsremit.com",
         ],
         allow_credentials=True,
         allow_methods=["*"],
@@ -81,6 +98,7 @@ def create_app() -> FastAPI:
             "app.satsremit.com",
             "admin.satsremit.com",
             "agent.satsremit.com",
+            "receiver.satsremit.com",
             "vm-1327.lnvps.cloud",  # VPS hostname for testing
             # Keep localhost so systemd health-check scripts and internal
             # curl calls (e.g. from Nginx on the same host) work in production.
@@ -191,6 +209,14 @@ def create_app() -> FastAPI:
         logger.info(f"Agent dashboard mounted at /agent from {agent_path}")
     else:
         logger.warning(f"Agent dashboard static files not found at {agent_path}")
+
+    # Serve receiver verification interface
+    receiver_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "receiver")
+    if os.path.exists(receiver_path):
+        app.mount("/receiver", StaticFiles(directory=receiver_path, html=True), name="receiver")
+        logger.info(f"Receiver interface mounted at /receiver from {receiver_path}")
+    else:
+        logger.warning(f"Receiver interface static files not found at {receiver_path}")
 
     # Serve admin panel static files (must be mounted after public app)
     # Use absolute path to ensure it works from any working directory

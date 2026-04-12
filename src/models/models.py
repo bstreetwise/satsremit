@@ -73,20 +73,22 @@ class Transfer(Base):
     receiver_phone_verified = Column(Boolean, default=False)
     agent_verified = Column(Boolean, default=False)
     verified_at = Column(DateTime, nullable=True)
+    verification_completed_at = Column(DateTime, nullable=True)
+    
+    # PIN Management
+    pin_generated = Column(String(255), nullable=True)  # Bcrypt hash (~60 chars)
+    last_pin_resent_at = Column(DateTime, nullable=True)
     
     # Payout
     payout_at = Column(DateTime, nullable=True)
     
     # Settlement
     settled_at = Column(DateTime, nullable=True)
+    paid_at = Column(DateTime, nullable=True)  # When payment was received
     
     # Metadata
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Additional
-    pin_generated = Column(String(4), nullable=True)  # Store hashed PIN
-    notes = Column(String(500), nullable=True)
 
 
 class Agent(Base):
@@ -153,6 +155,31 @@ class Settlement(Base):
     completed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CashAdvance(Base):
+    """Audit trail for cash advances from admin to agents"""
+    __tablename__ = "cash_advances"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # Participants
+    admin_agent_id = Column(UUID(as_uuid=True), ForeignKey("agents.id"), nullable=False, index=True)
+    recipient_agent_id = Column(UUID(as_uuid=True), ForeignKey("agents.id"), nullable=False, index=True)
+    
+    # Financial
+    amount_zar = Column(Numeric(15, 2), nullable=False)
+    admin_balance_before = Column(Numeric(15, 2), nullable=False)
+    admin_balance_after = Column(Numeric(15, 2), nullable=False)
+    recipient_balance_before = Column(Numeric(15, 2), nullable=False)
+    recipient_balance_after = Column(Numeric(15, 2), nullable=False)
+    
+    # Details
+    note = Column(String(500), nullable=True)
+    transaction_id = Column(String(50), unique=True, nullable=False, index=True)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 
 class InvoiceHold(Base):

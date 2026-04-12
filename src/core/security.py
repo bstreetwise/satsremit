@@ -38,13 +38,37 @@ class TokenPayload:
 
 
 def hash_password(password: str) -> str:
-    """Hash password using bcrypt"""
+    """Hash password using bcrypt
+    
+    Note: bcrypt has a 72-byte limit for passwords. Longer passwords are silently truncated.
+    We truncate manually to be explicit about this behavior.
+    """
+    # Truncate to 72 bytes (bcrypt limit)
+    if isinstance(password, str):
+        password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password against hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify password against hash
+    
+    Supports both bcrypt and PBKDF2 hashes for compatibility.
+    Truncates to 72 bytes to match hash_password behavior for bcrypt.
+    """
+    # Truncate to 72 bytes (bcrypt limit) - must match hash_password
+    if isinstance(plain_password, str):
+        plain_password = plain_password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+    
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception as e:
+        # Try PBKDF2 context as fallback if bcrypt fails
+        try:
+            pbkdf2_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
+            return pbkdf2_context.verify(plain_password, hashed_password)
+        except Exception:
+            raise e
 
 
 def create_token(

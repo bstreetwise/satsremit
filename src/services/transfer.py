@@ -23,7 +23,9 @@ from src.models.models import (
     Agent,
 )
 from src.services.lnd import LNDService
+from src.services.notification import NotificationService
 from src.core.config import get_settings
+from src.core.security import generate_pin, hash_pin
 from src.utils import generate_reference
 
 logger = logging.getLogger(__name__)
@@ -213,6 +215,7 @@ class TransferService:
             if is_paid and transfer.state == TransferState.INVOICE_GENERATED:
                 # Update transfer state
                 transfer.state = TransferState.PAYMENT_LOCKED
+                transfer.paid_at = datetime.utcnow()
                 self.db.commit()
 
                 self._log_state_change(
@@ -224,6 +227,30 @@ class TransferService:
                 )
 
                 logger.info(f"Payment received for transfer: {transfer.reference}")
+
+                # Generate PIN and send to receiver
+                try:
+                    pin = generate_pin()
+                    pin_hash = hash_pin(pin)
+                    transfer.pin_generated = pin_hash
+                    self.db.commit()
+
+                    notification_service = NotificationService()
+                    await notification_service.send_pin_to_receiver(
+                        phone_number=transfer.receiver_phone,
+                        pin=pin,
+                        transfer_reference=transfer.reference,
+                        amount_zar=float(transfer.amount_zar),
+                    )
+                    logger.info(
+                        f"PIN generated and sent to receiver {transfer.receiver_phone} "
+                        f"for transfer {transfer.reference}"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to generate/send PIN for transfer {transfer.reference}: {e}"
+                    )
+                    # Don't fail the payment check, but log the error
 
             return is_paid
 

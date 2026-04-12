@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>SatsRemit Platform Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #f7931a 0%, #1a1a1a 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px 20px;
+        }
+        
+        .flows {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .flow-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        
+        .flow-card:hover {
+            border-color: #f7931a;
+            box-shadow: 0 4px 12px rgba(247, 147, 26, 0.2);
+        }
+        
+        .flow-card h2 {
+            color: #f7931a;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .flow-card p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        
+        .flow-steps {
+            list-style: none;
+            margin-bottom: 15px;
+        }
+        
+        .flow-steps li {
+            padding: 8px 0;
+            padding-left: 24px;
+            position: relative;
+            font-size: 13px;
+            color: #333;
+        }
+        
+        /* NAVIGATION HEADER */
+        header {
+            background: linear-gradient(135deg, #f7931a 0%, #1a1a1a 100%) !important;
+            padding: 15px 20px !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            color: white !important;
+            margin-bottom: 30px !important;
+            border-top-left-radius: 0 !important;
+            border-top-right-radius: 0 !important;
+        }
+
+        header a {
+            color: white !important;
+            text-decoration: none !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            padding: 8px 12px !important;
+            border-radius: 4px !important;
+            font-size: 14px !important;
+            transition: all 0.3s !important;
+        }
+
+        header .logo {
+            font-weight: bold !important;
+            font-size: 16px !important;
+            margin-right: auto !important;
+        }
+
+        header a:hover {
+            background: rgba(255,255,255,0.1) !important;
+        }
+
+        .container {
+            margin-top: 0 !important;
+        }
+        
+        .flow-steps li:before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: #f7931a;
+            font-weight: bold;
+        }
+        
+        .flow-links {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .link-btn {
+            display: inline-block;
+            padding: 10px 16px;
+            background: #f7931a;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            transition: background 0.3s;
+        }
+        
+        .link-btn:hover {
+            background: #e08514;
+        }
+        
+        .link-btn.secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .link-btn.secondary:hover {
+            background: #e8e8e8;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #1a1a1a;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f7931a;
+        }
+        
+        .endpoints-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .endpoint-card {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .endpoint-card strong {
+            color: #f7931a;
+        }
+        
+        .status-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .status-table th,
+        .status-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .status-table th {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .badge-active {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-verified {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="/app" class="logo">
+            <i class="fas fa-bolt"></i> SatsRemit
+        </a>
+        <a href="/app"><i class="fas fa-home"></i> Home</a>
+        <a href="/api/admin"><i class="fas fa-chart-line"></i> Admin</a>
+        <a href="/agent"><i class="fas fa-briefcase"></i> Agent</a>
+        <a href="/receiver"><i class="fas fa-check-circle"></i> Receiver</a>
+    </header>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ SatsRemit Platform</h1>
+            <p>Complete Bitcoin Remittance Platform - Integrated Flow Guide</p>
+        </div>
+        
+        <div class="content">
+            <!-- Quick Links -->
+            <div class="section">
+                <h2>🚀 Quick Access</h2>
+                <div class="flows">
+                    <div class="flow-card">
+                        <h2>👤 Sender</h2>
+                        <p>Send money to Zimbabwe via Bitcoin Lightning</p>
+                        <div class="flow-links">
+                            <a href="/app" class="link-btn">Open Sender App</a>
+                            <a href="#sender-flow" class="link-btn secondary">View Flow</a>
+                        </div>
+                    </div>
+                    
+                    <div class="flow-card">
+                        <h2>💼 Agent</h2>
+                        <p>Manage transfers and verify receivers</p>
+                        <div class="flow-links">
+                            <a href="/agent" class="link-btn">Open Agent Dashboard</a>
+                            <a href="#agent-flow" class="link-btn secondary">View Flow</a>
+                        </div>
+                    </div>
+                    
+                    <div class="flow-card">
+                        <h2>✓ Receiver</h2>
+                        <p>Verify transfer receipt and confirm payment</p>
+                        <div class="flow-links">
+                            <a href="/receiver" class="link-btn">Open Receiver Portal</a>
+                            <a href="#receiver-flow" class="link-btn secondary">View Flow</a>
+                        </div>
+                    </div>
+                    
+                    <div class="flow-card">
+                        <h2>⚙️ Admin</h2>
+                        <p>Manage platform, agents, and volumes</p>
+                        <div class="flow-links">
+                            <a href="/admin" class="link-btn">Open Admin Panel</a>
+                            <a href="#admin-flow" class="link-btn secondary">View Flow</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Sender Flow -->
+            <div id="sender-flow" class="section">
+                <h2>📤 Sender Flow</h2>
+                <ol class="flow-steps">
+                    <li>Visit <strong>/app</strong> - Public sender application</li>
+                    <li>Enter receiver details (phone, name, location)</li>
+                    <li>Enter amount in ZAR</li>
+                    <li>Get fee quote with exchange rate</li>
+                    <li>Create transfer → Get Lightning invoice</li>
+                    <li>Pay invoice using Lightning wallet (mobile/desktop)</li>
+                    <li>Payment confirmed → Receiver gets PIN via WhatsApp</li>
+                    <li>Track transfer status in real-time</li>
+                </ol>
+                <div class="endpoint-card">
+                    <strong>Key Endpoints:</strong><br>
+                    POST /api/transfers/quote<br>
+                    POST /api/transfers<br>
+                    GET /api/transfers/{id}/status<br>
+                    POST /api/transfers/{id}/check-payment
+                </div>
+            </div>
+            
+            <!-- Receiver Flow -->
+            <div id="receiver-flow" class="section">
+                <h2>✓ Receiver Flow</h2>
+                <ol class="flow-steps">
+                    <li>Sender pays Lightning invoice</li>
+                    <li>Backend: Generate 4-digit PIN and send via WhatsApp</li>
+                    <li>Receiver enters reference number and phone on <strong>/receiver</strong></li>
+                    <li>View transfer details (amount, reference, status)</li>
+                    <li>Enter 4-digit PIN from WhatsApp message</li>
+                    <li>PIN verified → Transfer marked as RECEIVER_VERIFIED</li>
+                    <li>Agent can now proceed with cash payout</li>
+                    <li>Receiver confirmspay out completion</li>
+                </ol>
+                <div class="endpoint-card">
+                    <strong>Key Endpoints:</strong><br>
+                    GET /api/receivers/transfers/{ref}/status<br>
+                    POST /api/receivers/verify-pin<br>
+                    POST /api/receivers/resend-pin
+                </div>
+            </div>
+            
+            <!-- Agent Flow -->
+            <div id="agent-flow" class="section">
+                <h2>💼 Agent Flow</h2>
+                <ol class="flow-steps">
+                    <li>Login at <strong>/agent</strong> with phone + password</li>
+                    <li>View pending transfers in dashboard</li>
+                    <li>Status: Payment received, waiting for receiver verification</li>
+                    <li>Receiver submits PIN → Receiver verified</li>
+                    <li>Agent verifies receiver phone in app</li>
+                    <li>Transfer status: RECEIVER_VERIFIED</li>
+                    <li>Proceed with cash payout to receiver</li>
+                    <li>Confirm payout completion in app</li>
+                    <li>Earn commission sats on settlement</li>
+                </ol>
+                <div class="endpoint-card">
+                    <strong>Key Endpoints:</strong><br>
+                    POST /api/agent/auth/login<br>
+                    GET /api/agent/balance<br>
+                    GET /api/agent/transfers<br>
+                    POST /api/agent/transfers/{id}/verify
+                </div>
+            </div>
+            
+            <!-- Admin Flow -->
+            <div id="admin-flow" class="section">
+                <h2>⚙️ Admin Flow</h2>
+                <ol class="flow-steps">
+                    <li>Login at <strong>/admin</strong> with admin credentials</li>
+                    <li>Dashboard: View daily/weekly/monthly volumes</li>
+                    <li>Agents section: Create agents, manage balances</li>
+                    <li>Transfers section: Monitor all transfers in real-time</li>
+                    <li>Settlements section: View pending payouts</li>
+                    <li>Analytics: Generate reports on volumes and fees</li>
+                    <li>Advanced: Manager agent cash balances and disbursements</li>
+                </ol>
+                <div class="endpoint-card">
+                    <strong>Key Endpoints:</strong><br>
+                    POST /api/admin/agents<br>
+                    PUT /api/admin/agents/{id}/balance<br>
+                    GET /api/admin/transfers<br>
+                    POST /api/admin/agents/{id}/advance
+                </div>
+            </div>
+            
+            <!-- Transfer States -->
+            <div class="section">
+                <h2>🔄 Transfer State Machine</h2>
+                <p>Every transfer progresses through these states:</p>
+                <table class="status-table">
+                    <thead>
+                        <tr>
+                            <th>State</th>
+                            <th>Description</th>
+                            <th>What Happens</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="status-badge badge-pending">INITIATED</span></td>
+                            <td>Transfer created</td>
+                            <td>Waiting for sender to generate invoice</td>
+                        </tr>
+                        <tr>
+                            <td><span class="status-badge badge-pending">INVOICE_GENERATED</span></td>
+                            <td>LND invoice created</td>
+                            <td>Sender ready to pay via Lightning</td>
+                        </tr>
+                        <tr>
+                            <td><span class="status-badge badge-active">PAYMENT_LOCKED</span></td>
+                            <td>Payment received</td>
+                            <td>PIN sent to receiver, awaiting verification</td>
+                        </tr>
+                        <tr>
+                            <td><span class="status-badge badge-verified">RECEIVER_VERIFIED</span></td>
+                            <td>Receiver verified with PIN</td>
+                            <td>Ready for agent payout</td>
+                        </tr>
+                        <tr>
+                            <td><span class="status-badge badge-pending">PAYOUT_EXECUTED</span></td>
+                            <td>Agent executing cash payout</td>
+                            <td>Receiver collecting cash</td>
+                        </tr>
+                        <tr>
+                            <td><span class="status-badge badge-pending">SETTLED</span></td>
+                            <td>Transfer complete</td>
+                            <td>Ready for settlement batch</td>
+                        </tr>
+                        <tr>
+                            <td><span class="status-badge badge-active">FINAL</span></td>
+                            <td>Archive complete</td>
+                            <td>Settlement confirmed, commissions paid</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Testing Guide -->
+            <div class="section">
+                <h2>🧪 Testing All Flows</h2>
+                <p><strong>Test Scenario 1: Create Transfer and Verify</strong></p>
+                <div class="endpoint-card">
+                    1. POST /api/transfers → Get invoice<br>
+                    2. Backend detects payment (simulated)<br>
+                    3. PIN generated and stored<br>
+                    4. POST /api/receivers/verify-pin → Receiver verifies<br>
+                    5. GET /api/transfers/{id}/status → Check state
+                </div>
+                <br>
+                <p><strong>Test Scenario 2: Agent Verification</strong></p>
+                <div class="endpoint-card">
+                    1. Agent logs in at /agent<br>
+                    2. Views pending transfers<br>
+                    3. POST /api/agent/transfers/{id}/verify<br>
+                    4. Transfer state: RECEIVER_VERIFIED<br>
+                    5. Can proceed with payout
+                </div>
+                <br>
+                <p><strong>Test Scenario 3: Admin Management</strong></p>
+                <div class="endpoint-card">
+                    1. Admin logs in at /admin<br>
+                    2. POST /api/admin/agents → Create new agent<br>
+                    3. GET /api/admin/transfers → View all transfers<br>
+                    4. Monitor volumes and fees
+                </div>
+            </div>
+            
+            <!-- Integration Checklist -->
+            <div class="section">
+                <h2>✅ Integration Checklist</h2>
+                <table class="status-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>PIN Generation on Payment</td>
+                            <td><span class="status-badge badge-active">✓ Done</span></td>
+                            <td>Auto-generates when PAYMENT_LOCKED</td>
+                        </tr>
+                        <tr>
+                            <td>Receiver PIN Verification Endpoint</td>
+                            <td><span class="status-badge badge-active">✓ Done</span></td>
+                            <td>POST /api/receivers/verify-pin</td>
+                        </tr>
+                        <tr>
+                            <td>Receiver UI Page</td>
+                            <td><span class="status-badge badge-active">✓ Done</span></td>
+                            <td>Full 5-step workflow at /receiver</td>
+                        </tr>
+                        <tr>
+                            <td>PIN Resend with Rate Limiting</td>
+                            <td><span class="status-badge badge-active">✓ Done</span></td>
+                            <td>1 per 5 minutes, 429 on limit</td>
+                        </tr>
+                        <tr>
+                            <td>Brute Force Protection</td>
+                            <td><span class="status-badge badge-active">✓ Done</span></td>
+                            <td>5 attempts + 30 min lockout</td>
+                        </tr>
+                        <tr>
+                            <td>Database Schema</td>
+                            <td><span class="status-badge badge-active">✓ Done</span></td>
+                            <td>Added pin_generated, verification_completed_at fields</td>
+                        </tr>
+                        <tr>
+                            <td>Dashboard Navigation</td>
+                            <td><span class="status-badge badge-pending">⋯ In Progress</span></td>
+                            <td>Adding cross-links between dashboards</td>
+                        </tr>
+                        <tr>
+                            <td>Comprehensive Tests</td>
+                            <td><span class="status-badge badge-active">✓ Done</span></td>
+                            <td>test_receiver_flow.py with 15+ test cases</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>SatsRemit Agent Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../app/css/style.css">
@@ -124,6 +127,39 @@
 
         .btn-secondary:hover {
             background: white;
+        }
+
+        /* NAVIGATION HEADER */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--dark) 100%);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            color: white;
+        }
+
+        header a {
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        header .logo {
+            font-weight: bold;
+            font-size: 16px;
+            margin-right: auto;
+        }
+
+        header a:hover {
+            background: rgba(255,255,255,0.1);
         }
 
         /* DASHBOARD */
@@ -579,6 +615,21 @@
                 </ul>
 
                 <div style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+                    <div style="margin-bottom: 15px;">
+                        <p style="font-size: 11px; text-transform: uppercase; opacity: 0.6; margin-bottom: 8px;">Quick Links</p>
+                        <a href="/app" style="display: block; padding: 8px 12px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; border-radius: 4px; transition: all 0.3s; margin-bottom: 4px;" onmouseover="this.style.background='rgba(247,147,26,0.2)'" onmouseout="this.style.background='transparent'">
+                            <i class="fas fa-paper-plane" style="width: 16px;"></i> Send Money
+                        </a>
+                        <a href="/receiver" style="display: block; padding: 8px 12px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; border-radius: 4px; transition: all 0.3s; margin-bottom: 4px;" onmouseover="this.style.background='rgba(247,147,26,0.2)'" onmouseout="this.style.background='transparent'">
+                            <i class="fas fa-check-circle" style="width: 16px;"></i> Receiver Portal
+                        </a>
+                        <a href="/admin" style="display: block; padding: 8px 12px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; border-radius: 4px; transition: all 0.3s; margin-bottom: 4px;" onmouseover="this.style.background='rgba(247,147,26,0.2)'" onmouseout="this.style.background='transparent'">
+                            <i class="fas fa-cog" style="width: 16px;"></i> Admin Panel
+                        </a>
+                        <a href="/platform-guide.html" target="_blank" style="display: block; padding: 8px 12px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; border-radius: 4px; transition: all 0.3s;" onmouseover="this.style.background='rgba(247,147,26,0.2)'" onmouseout="this.style.background='transparent'">
+                            <i class="fas fa-question-circle" style="width: 16px;"></i> Help & Guide
+                        </a>
+                    </div>
                     <button class="btn btn-secondary" id="logout-btn" style="width: 100%;">
                         <i class="fas fa-sign-out-alt"></i> Logout
                     </button>
@@ -749,8 +800,8 @@
                     Confirm Payout Completed
                 </button>
             </div>
-        </div>
-    </div>
+        </div>?bust=1775919415"></script>
+    <script src="js/app.js?bust=1775919415
 
     <script src="js/api.js"></script>
     <script src="js/app.js"></script>

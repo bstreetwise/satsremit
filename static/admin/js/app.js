@@ -154,6 +154,9 @@ function init_event_listeners() {
     // Add Agent Form
     document.getElementById('add-agent-form')?.addEventListener('submit', handle_add_agent);
 
+    // Send Cash Advance Form
+    document.getElementById('send-cash-form')?.addEventListener('submit', handle_send_cash_advance);
+
     // Modal Close Buttons
     document.querySelectorAll('.close-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -270,6 +273,14 @@ function show_transfer_details(transferId) {
 
 function confirm_settlement(settlementId) {
     UI.confirm_settlement(settlementId);
+}
+
+function open_send_cash_modal(agentId, agentName, currentBalance) {
+    UI.open_send_cash_modal(agentId, agentName, currentBalance);
+}
+
+function handle_send_cash_advance(event) {
+    UI.handle_send_cash_advance(event);
 }
 
 function load_dashboard() {

@@ -177,6 +177,7 @@ class AdminAgentCreateResponse(BaseModel):
     agent_id: str
     phone: str
     name: str
+    location_code: Optional[str] = None
     status: str
     cash_balance_zar: Decimal
 
@@ -201,6 +202,21 @@ class AdminAgentAdvanceResponse(BaseModel):
     transaction_id: str
 
 
+class CashAdvanceAuditEntry(BaseModel):
+    transaction_id: str
+    admin_agent_name: str
+    admin_agent_phone: str
+    recipient_agent_name: str
+    recipient_agent_phone: str
+    amount_zar: Decimal
+    admin_balance_before: Decimal
+    admin_balance_after: Decimal
+    recipient_balance_before: Decimal
+    recipient_balance_after: Decimal
+    note: Optional[str]
+    created_at: datetime
+
+
 class AdminTransferListResponse(BaseModel):
     transfer_id: str
     reference: str
@@ -222,6 +238,57 @@ class AdminVolumeResponse(BaseModel):
     total_fees_collected_sats: int
     platform_earn_sats: int
     agent_earn_sats: int
+
+
+class AdminSettlementListResponse(BaseModel):
+    settlement_id: str
+    agent_name: str
+    agent_phone: str
+    period: str  # "2026-04-07 to 2026-04-13"
+    amount_zar: Decimal
+    status: str  # PENDING, CONFIRMED, COMPLETED
+    created_at: datetime
+    confirmed_at: Optional[datetime]
+    completed_at: Optional[datetime]
+
+
+# ===== RECEIVER SCHEMAS =====
+
+class ReceiverVerifyPINRequest(BaseModel):
+    reference: str = Field(..., description="Transfer reference number")
+    phone: str = Field(..., min_length=10, max_length=20, description="Receiver phone number")
+    pin: str = Field(..., min_length=4, max_length=4, description="4-digit PIN")
+
+
+class ReceiverVerifyPINResponse(BaseModel):
+    verified: bool
+    message: str
+    transfer_id: Optional[str]
+    amount_zar: Decimal
+    receiver_name: str
+
+
+class ReceiverTransferStatusResponse(BaseModel):
+    reference: str
+    transfer_id: str
+    receiver_name: str
+    amount_zar: Decimal
+    state: str
+    receiver_phone_verified: bool
+    agent_verified: bool
+    created_at: datetime
+    expires_at: Optional[datetime]
+
+
+class ReceiverResendPINRequest(BaseModel):
+    reference: str = Field(..., description="Transfer reference number")
+    phone: str = Field(..., min_length=10, max_length=20, description="Receiver phone number")
+
+
+class ReceiverResendPINResponse(BaseModel):
+    success: bool
+    message: str
+    next_resend_in_seconds: int
 
 
 # ===== WEBHOOK SCHEMAS =====
