@@ -8,8 +8,12 @@ import sys
 import os
 from pathlib import Path
 
+# Change to project directory
+project_dir = Path(__file__).parent
+os.chdir(project_dir)
+
 # Load environment variables from .env file
-env_file = Path(__file__).parent / ".env"
+env_file = project_dir / ".env"
 if env_file.exists():
     from dotenv import load_dotenv
     load_dotenv(env_file)
@@ -30,5 +34,5 @@ cmd = [
     "--log-level", "info"
 ]
 
-print(f"Starting Uvicorn: {' '.join(cmd)}")
-subprocess.run(cmd, env=env)
+print(f"Starting Uvicorn from {project_dir}: {' '.join(cmd)}")
+subprocess.run(cmd, env=env, cwd=project_dir)
