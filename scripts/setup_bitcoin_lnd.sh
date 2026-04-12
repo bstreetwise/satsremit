@@ -81,7 +81,7 @@ echo -e "${GREEN}✓ Old installation cleaned${NC}"
 echo -e "${YELLOW}[4/8] Installing Bitcoin Core (latest)...${NC}"
 
 # Get latest version
-BITCOIN_VERSION="26.0"
+BITCOIN_VERSION="29.0"
 BITCOIN_URL="https://bitcoincore.org/bin/bitcoin-core-${BITCOIN_VERSION}/bitcoin-${BITCOIN_VERSION}-x86_64-linux-gnu.tar.gz"
 
 echo "Downloading Bitcoin Core ${BITCOIN_VERSION}..."
@@ -182,7 +182,7 @@ echo "  - Data: /data/bitcoin"
 # ========== STEP 6: INSTALL LND ==========
 echo -e "${YELLOW}[6/8] Installing LND...${NC}"
 
-LND_VERSION="0.18.4"
+LND_VERSION="0.19.0-beta"
 LND_URL="https://github.com/lightningnetwork/lnd/releases/download/v${LND_VERSION}/lnd-linux-amd64-v${LND_VERSION}.tar.gz"
 
 echo "Downloading LND v${LND_VERSION}..."

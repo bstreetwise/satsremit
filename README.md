@@ -39,7 +39,25 @@ Server will be available at `http://localhost:8000`
 - API Docs: `http://localhost:8000/api/docs`
 - ReDoc: `http://localhost:8000/api/redoc`
 
-## 📁 Project Structure
+## �️ VPS Deployment
+
+**Current Production Setup** (Updated April 12, 2026):
+- **Host**: vm-1327.lnvps.cloud
+- **Bitcoin Core**: v29.0.0 (testnet4)
+- **LND**: 0.19.0-beta (testnet4)
+- **App**: Running on Uvicorn (port 8000, 2 workers)
+- **Status**: ✓ All systems operational
+
+📖 See [VPS_CURRENT_SETUP.md](VPS_CURRENT_SETUP.md) for:
+- Current service versions and status
+- Quick command reference (bc, ln aliases)
+- Network configuration details
+- Troubleshooting guide
+
+🚀 Setup guide: [VPS_SETUP.md](VPS_SETUP.md)  
+⚙️ Production config: [SATSREMIT_PRODUCTION_CONFIG.md](SATSREMIT_PRODUCTION_CONFIG.md)
+
+## �📁 Project Structure
 
 ```
 satsremit/
