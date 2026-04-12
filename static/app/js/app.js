@@ -3,6 +3,8 @@
  * Main application logic and flow management
  */
 
+console.log('=== APP.JS LOADED AT', new Date().toISOString(), '===');
+
 const APP_STATE = {
     currentTransfer: null,
     userPhone: localStorage.getItem('user_phone') || null,
@@ -92,10 +94,18 @@ function init_event_listeners() {
         });
     }
 
-    // Amount input - fetch quote in real-time
+    // Amount input - fetch quote on blur only
     const amountInput = document.getElementById('amount-zar');
     if (amountInput) {
-        amountInput.addEventListener('input', debounce(handle_amount_change, 500));
+        // Silently handle input (no validation)
+        amountInput.addEventListener('input', (e) => {
+            // Optional: show preview of amount, but don't validate yet
+        });
+        
+        // Validate and fetch quote when user leaves the field
+        amountInput.addEventListener('blur', async (e) => {
+            await update_quote_display();
+        });
     }
 
     // Location selector
@@ -110,68 +120,107 @@ function init_event_listeners() {
 // ===== TRANSFER FORM HANDLING =====
 
 async function load_transfer_page() {
+    console.log('*** LOAD_TRANSFER_PAGE CALLED ***');
+    
     const phoneInput = document.getElementById('sender-phone');
     if (phoneInput && APP_STATE.userPhone) {
         phoneInput.value = APP_STATE.userPhone;
     }
-    update_quote_display();
-}
-
-async function handle_amount_change(event) {
-    const amount = event.target.value;
-    if (amount && parseFloat(amount) > 0) {
-        await update_quote_display();
+    
+    // Setup amount input blur listener for quote calculation
+    const amountInput = document.getElementById('amount-zar');
+    console.log('Amount input element found?', !!amountInput);
+    
+    if (amountInput) {
+        console.log('Setting up blur listener on amount input');
+        
+        // Add blur listener for quote fetch
+        amountInput.addEventListener('blur', async (e) => {
+            console.log('*** BLUR EVENT TRIGGERED on amount input ***');
+            await update_quote_display();
+        });
     }
+    
+    update_quote_display();
 }
 
 async function update_quote_display() {
     const amountInput = document.getElementById('amount-zar');
-    const amount = parseFloat(amountInput.value);
+    const quoteDisplay = document.getElementById('quote-display');
+    const receiverAmount = parseFloat(amountInput.value);
 
-    if (!amount || amount <= 0) {
-        const quoteDisplay = document.getElementById('quote-display');
+    console.log('=== UPDATE_QUOTE_DISPLAY CALLED ===');
+    console.log('Receiver amount entered:', receiverAmount);
+
+    if (!receiverAmount || receiverAmount <= 0) {
         if (quoteDisplay) {
-            quoteDisplay.innerHTML = '<p class="text-muted">Enter an amount to see the quote</p>';
+            quoteDisplay.innerHTML = '<p class="text-muted">Enter an amount to see fees and payment total</p>';
         }
         return;
     }
 
     try {
-        const quote = await API.getQuote(amount);
-        display_quote(quote);
+        // Calculate sender amount needed from receiver amount
+        // Formula: sender_amount = receiver_amount / (1 - total_fee_percent)
+        // Total fee is 1% (0.5% platform + 0.5% commission)
+        const TOTAL_FEE_PERCENT = 0.01;  // 1%
+        const senderAmount = receiverAmount / (1 - TOTAL_FEE_PERCENT);
+        
+        console.log('CALCULATION: Receiver=' + receiverAmount + ', Sender to pay=' + senderAmount.toFixed(2));
+        console.log('Calling API.getQuote with sender amount:', senderAmount);
+        
+        // Fetch quote using sender amount
+        const quote = await API.getQuote(senderAmount);
+        console.log('Quote received - amount_zar (what API got):', quote.amount_zar, 'receiver_gets_zar:', quote.receiver_gets_zar);
+        display_quote(quote, receiverAmount);
     } catch (error) {
-        show_alert(`Error fetching quote: ${error.message}`, 'error');
+        // Show validation error inline, not as alert
+        let errorMsg = error.message;
+        if (error.response?.detail) errorMsg = error.response.detail;
+        console.error('Quote error:', error);
+        if (quoteDisplay) {
+            quoteDisplay.innerHTML = `<p style="color: #d32f2f; font-weight: 500; margin: 1rem 0;">${errorMsg}</p>`;
+        }
     }
 }
 
-function display_quote(quote) {
+function display_quote(quote, requestedReceiverAmount = null) {
     const quoteDisplay = document.getElementById('quote-display');
+    const receiverAmount = requestedReceiverAmount || (parseFloat(document.getElementById('amount-zar').value) || quote.receiver_gets_zar);
+    
+    console.log('DISPLAY_QUOTE:', 'requested=', requestedReceiverAmount, 'final=', receiverAmount, 'quote.amount_zar=', quote.amount_zar);
+    
     quoteDisplay.innerHTML = `
         <div class="quote-card">
-            <div class="quote-row">
-                <label>Amount you send:</label>
-                <span class="amount-main">${format_currency(quote.amount_zar)}</span>
+            <div class="quote-row" style="background: #e8f5e9; padding: 0.75rem; border-radius: 4px;">
+                <label style="font-weight: 600; color: #2e7d32;">RECIPIENT GETS:</label>
+                <span style="color: #2e7d32; font-size: 1.1rem; font-weight: 600;">${format_currency(receiverAmount)}</span>
             </div>
             <div class="quote-row">
                 <label>Exchange rate:</label>
                 <span>${format_currency(quote.rate_zar_per_btc)} per BTC</span>
             </div>
-            <div class="quote-row">
-                <label>We receive:</label>
-                <span class="amount-sats">${format_sats(quote.amount_sats)}</span>
-            </div>
             <div class="divider"></div>
             <div class="quote-row">
-                <label>Platform fee:</label>
-                <span class="amount-fee">${format_currency(quote.platform_fee_zar)}</span>
+                <label>Platform fee (0.5%):</label>
+                <span>${format_currency(quote.platform_fee_zar)}</span>
             </div>
             <div class="quote-row">
-                <label>Agent commission:</label>
+                <label>Agent commission (0.5%):</label>
                 <span>${format_currency(quote.agent_commission_zar)}</span>
             </div>
-            <div class="quote-row total">
-                <label>Recipient receives:</label>
-                <span class="amount-total">${format_currency(quote.receiver_gets_zar)}</span>
+            <div class="quote-row">
+                <label style="color: #666;">Total fees:</label>
+                <span style="color: #666;">${format_currency(quote.total_fees_zar)}</span>
+            </div>
+            <div class="divider"></div>
+            <div class="quote-row total" style="background: #1976d2; padding: 1rem; border-radius: 4px; color: white;">
+                <label style="font-weight: 600; font-size: 1rem; color: white;">YOU PAY:</label>
+                <span style="font-size: 1.3rem; color: white; font-weight: 600;">${format_currency(quote.amount_zar)}</span>
+            </div>
+            <div class="quote-row">
+                <label>Bitcoin amount:</label>
+                <span>${format_sats(quote.amount_sats)}</span>
             </div>
         </div>
     `;
@@ -180,28 +229,70 @@ function display_quote(quote) {
 async function handle_transfer_submit(event) {
     event.preventDefault();
 
-    const senderPhone = document.getElementById('sender-phone').value;
-    const receiverPhone = document.getElementById('receiver-phone').value;
-    const receiverName = document.getElementById('receiver-name').value;
+    const senderPhone = document.getElementById('sender-phone').value.trim();
+    const receiverPhone = document.getElementById('receiver-phone').value.trim();
+    const receiverName = document.getElementById('receiver-name').value.trim();
     const receiverLocation = document.getElementById('receiver-location').value;
-    const amountZAR = parseFloat(document.getElementById('amount-zar').value);
+    let amountZAR = parseFloat(document.getElementById('amount-zar').value);
 
     // Validation
-    if (!senderPhone || !receiverPhone || !receiverName || !receiverLocation || !amountZAR) {
-        show_alert('Please fill in all fields', 'error');
+    if (!senderPhone) {
+        show_alert('Please enter your phone number', 'error');
+        return;
+    }
+    if (!receiverPhone) {
+        show_alert('Please enter recipient phone number', 'error');
+        return;
+    }
+    if (!receiverName) {
+        show_alert('Please enter recipient name', 'error');
+        return;
+    }
+    if (!receiverLocation || receiverLocation === '') {
+        show_alert('Please select recipient location', 'error');
+        return;
+    }
+    if (!amountZAR || amountZAR <= 0) {
+        show_alert('Please enter valid amount', 'error');
+        return;
+    }
+
+    // Validate phone format (E.164 or local)
+    const phoneRegex = /^(\+|0)[0-9\s\-()]{9,}$/;
+    if (!phoneRegex.test(senderPhone)) {
+        show_alert('Invalid sender phone format. Use format like +27123456789 or 0123456789', 'error');
+        return;
+    }
+    if (!phoneRegex.test(receiverPhone)) {
+        show_alert('Invalid recipient phone format. Use format like +263123456789 or 0123456789', 'error');
         return;
     }
 
     try {
         show_spinner(true);
 
-        const response = await API.createTransfer({
+        // Calculate sender amount from recipient amount
+        // Formula: sender_amount = recipient_amount / (1 - total_fee_percent)
+        // Total fee is 1% (0.5% platform + 0.5% commission)
+        const TOTAL_FEE_PERCENT = 0.01;  // 1%
+        const recipientAmount = amountZAR;
+        const senderAmount = recipientAmount / (1 - TOTAL_FEE_PERCENT);
+
+        // Ensure amount has exactly 2 decimal places
+        amountZAR = Math.round(senderAmount * 100) / 100;
+
+        // Debug: Log payload being sent
+        const payload = {
             sender_phone: senderPhone,
             receiver_phone: receiverPhone,
             receiver_name: receiverName,
             receiver_location: receiverLocation,
             amount_zar: amountZAR,
-        });
+        };
+        console.log('Submitting transfer payload (sender pays, recipient gets ' + Math.round(recipientAmount * 100) / 100 + '):', payload);
+        console.log('Sender amount to pay: ' + amountZAR + ', Recipient to receive: ' + Math.round(recipientAmount * 100) / 100);
+
+        const response = await API.createTransfer(payload);
 
         // Store transfer details
         APP_STATE.currentTransfer = response;
@@ -212,7 +303,25 @@ async function handle_transfer_submit(event) {
         load_payment_page();
 
     } catch (error) {
-        show_alert(`Transfer failed: ${error.message}`, 'error');
+        console.error('Transfer submission error:', error);
+        
+        // Extract detailed error message
+        let errorMsg = error.message || 'Unknown error';
+        
+        if (error.response && error.response.detail) {
+            errorMsg = error.response.detail;
+        } else if (error.response && error.response.error) {
+            errorMsg = error.response.error;
+        } else if (error.response && error.response.message) {
+            errorMsg = error.response.message;
+        }
+        
+        // Show error with HTTP status if available
+        if (error.status) {
+            errorMsg = `API Error (${error.status}): ${errorMsg}`;
+        }
+        
+        show_alert(`Transfer failed: ${errorMsg}`, 'error');
     } finally {
         show_spinner(false);
     }
@@ -336,7 +445,11 @@ async function check_payment_status() {
         // Check if payment has actually been received via LND
         const paymentStatus = await API.checkPaymentReceived(transfer.transfer_id);
         
-        display_payment_status(paymentStatus);
+        // Only update DOM if status changed (prevents flicker)
+        if (APP_STATE.lastPaymentState !== JSON.stringify(paymentStatus)) {
+            display_payment_status(paymentStatus);
+            APP_STATE.lastPaymentState = JSON.stringify(paymentStatus);
+        }
 
         // If payment received, move to status page
         if (paymentStatus.payment_received) {
@@ -566,4 +679,91 @@ function copy_to_clipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
         show_alert('Copied to clipboard!', 'success');
     });
+}
+
+// ===== FORMATTING FUNCTIONS =====
+
+/**
+ * Format ZAR currency amount
+ */
+function format_currency(amount) {
+    const num = parseFloat(amount);
+    if (isNaN(num)) return 'R0.00';
+    return new Intl.NumberFormat('en-ZA', {
+        style: 'currency',
+        currency: 'ZAR',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(num);
+}
+
+/**
+ * Format sats (satoshis) amount
+ */
+function format_sats(sats) {
+    const num = parseInt(sats);
+    if (isNaN(num)) return '0 sats';
+    return new Intl.NumberFormat('en-US').format(num) + ' sats';
+}
+
+/**
+ * Format BTC amount
+ */
+function format_btc(btc) {
+    const num = parseFloat(btc);
+    if (isNaN(num)) return '0.00000000 BTC';
+    return num.toFixed(8) + ' BTC';
+}
+
+/**
+ * Format date/time
+ */
+function format_date(dateString) {
+    if (!dateString) return 'N/A';
+    
+    try {
+        const date = new Date(dateString);
+        return new Intl.DateTimeFormat('en-ZA', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        }).format(date);
+    } catch (error) {
+        console.error('Date formatting error:', error);
+        return dateString;
+    }
+}
+
+/**
+ * Format time remaining (for invoice expiry)
+ */
+function format_time_remaining(expiresAt) {
+    try {
+        const now = new Date();
+        const expiry = new Date(expiresAt);
+        const remaining = expiry - now;
+
+        if (remaining <= 0) {
+            return 'Expired';
+        }
+
+        const hours = Math.floor(remaining / (1000 * 60 * 60));
+        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+
+        if (hours > 0) {
+            return `${hours}h ${minutes}m remaining`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${seconds}s remaining`;
+        } else {
+            return `${seconds}s remaining`;
+        }
+    } catch (error) {
+        console.error('Time formatting error:', error);
+        return 'N/A';
+    }
 }

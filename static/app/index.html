@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>SatsRemit - Bitcoin Remittance to Zimbabwe</title>
     <meta name="description" content="Send money to Zimbabwe via Bitcoin Lightning Network">
     <meta name="theme-color" content="#f7931a">
@@ -31,6 +34,18 @@
                     </a>
                     <a href="#history" class="nav-link">
                         <i class="fas fa-history"></i> History
+                    </a>
+                    <a href="/admin" class="nav-link" style="margin-left: 2rem;">
+                        <i class="fas fa-chart-line"></i> Admin
+                    </a>
+                    <a href="/agent" class="nav-link">
+                        <i class="fas fa-briefcase"></i> Agent Portal
+                    </a>
+                    <a href="/receiver" class="nav-link">
+                        <i class="fas fa-check-circle"></i> Receiver
+                    </a>
+                    <a href="/platform-guide.html" class="nav-link">
+                        <i class="fas fa-book"></i> Guide
                     </a>
                 </nav>
             </div>
@@ -137,14 +152,15 @@
 
                             <!-- Amount Section -->
                             <div class="form-section">
-                                <h4>Amount</h4>
+                                <h4>Amount for Recipient</h4>
                                 <div class="form-group">
-                                    <label for="amount-zar">Amount (ZAR)</label>
-                                    <input type="number" id="amount-zar" name="amount_zar" placeholder="100.00" step="0.01" min="0" required>
+                                    <label for="amount-zar">Amount recipient receives (ZAR)</label>
+                                    <input type="number" id="amount-zar" name="amount_zar" placeholder="300.00" step="0.01" min="0" required>
+                                    <small style="color: #666; margin-top: 0.5rem;">Allowed: ZAR 100.00 - 500.00 (recipient receives)</small>
                                 </div>
 
                                 <div id="quote-display" class="quote-display">
-                                    <p class="text-muted">Enter an amount to see the quote</p>
+                                    <p class="text-muted">Enter an amount to see fees and payment total</p>
                                 </div>
                             </div>
 
@@ -207,10 +223,25 @@
 
         <!-- Footer -->
         <footer>
-            <p>&copy; 2026 SatsRemit. Bitcoin remittances to Zimbabwe.</p>
-            <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">
-                Powered by Bitcoin Lightning Network
-            </p>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <p>&copy; 2026 SatsRemit. Bitcoin remittances to Zimbabwe.</p>
+                    <p style="font-size: 0.9rem; margin-top: 0.5rem; opacity: 0.8;">
+                        Powered by Bitcoin Lightning Network
+                    </p>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <a href="/receiver" style="color: #f7931a; text-decoration: none; font-size: 0.9rem; font-weight: 600;">
+                        <i class="fas fa-check-circle"></i> Receiver Portal
+                    </a>
+                    <a href="/agent" style="color: #f7931a; text-decoration: none; font-size: 0.9rem; font-weight: 600;">
+                        <i class="fas fa-briefcase"></i> Agent Dashboard
+                    </a>
+                    <a href="/platform-guide.html" target="_blank" style="color: #f7931a; text-decoration: none; font-size: 0.9rem; font-weight: 600;">
+                        <i class="fas fa-question-circle"></i> Help
+                    </a>
+                </div>
+            </div>
         </footer>
     </div>
 
@@ -218,9 +249,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <!-- API Module -->
-    <script src="js/api.js"></script>
+    <script src="js/api.js?bust=1776000001"></script>
 
     <!-- Main Application -->
-    <script src="js/app.js"></script>
+    <script src="js/app.js?bust=1776000001"></script>
 </body>
 </html>

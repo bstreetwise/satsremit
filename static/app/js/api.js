@@ -12,12 +12,13 @@ const API = {
     async request(endpoint, options = {}) {
         const url = `${this.BASE_URL}${endpoint}`;
         const method = options.method || 'GET';
+        const showSpinner = options.showSpinner !== false; // Default true unless explicitly disabled
         const headers = {
             'Content-Type': 'application/json',
         };
 
         try {
-            show_spinner(true);
+            if (showSpinner) show_spinner(true);
 
             const response = await fetch(url, {
                 method,
@@ -25,16 +26,29 @@ const API = {
                 body: options.body ? JSON.stringify(options.body) : undefined,
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || error.error || 'API Error');
+                // Create error with detailed information
+                const errorObj = new Error(data.detail || data.error || 'API Error');
+                errorObj.status = response.status;
+                errorObj.response = data;
+                errorObj.endpoint = endpoint;
+                errorObj.method = method;
+                errorObj.payload = options.body;
+                throw errorObj;
             }
 
-            const data = await response.json();
-            show_spinner(false);
+            if (showSpinner) show_spinner(false);
             return data;
         } catch (error) {
-            show_spinner(false);
+            if (showSpinner) show_spinner(false);
+            console.error(`API ${error.method || 'GET'} ${endpoint}:`, {
+                status: error.status,
+                message: error.message,
+                response: error.response,
+                payload: error.payload
+            });
             throw error;
         }
     },
@@ -62,18 +76,21 @@ const API = {
     },
 
     /**
-     * Get transfer status
+     * Get transfer status (polling request - no spinner)
      */
     async getTransferStatus(transferId) {
-        return this.request(`/transfers/${transferId}/status`);
+        return this.request(`/transfers/${transferId}`, {
+            showSpinner: false,  // Disable spinner for polling
+        });
     },
 
     /**
-     * Check if payment has been received
+     * Check if payment has been received (polling request - no spinner)
      */
     async checkPaymentReceived(transferId) {
         return this.request(`/transfers/${transferId}/check-payment`, {
             method: 'POST',
+            showSpinner: false,  // Disable spinner for polling
         });
     },
 
