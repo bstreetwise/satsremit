@@ -91,7 +91,9 @@ def create_app() -> FastAPI:
     # Trusted hosts
     app.add_middleware(
         TrustedHostMiddleware,
-        allowed_hosts=["localhost", "127.0.0.1"] if settings.debug else [
+        allowed_hosts=[
+            "localhost", 
+            "127.0.0.1",
             "satsremit.com",
             "www.satsremit.com",
             "api.satsremit.com",
@@ -100,9 +102,6 @@ def create_app() -> FastAPI:
             "agent.satsremit.com",
             "receiver.satsremit.com",
             "vm-1327.lnvps.cloud",  # VPS hostname for testing
-            # Keep localhost so systemd health-check scripts and internal
-            # curl calls (e.g. from Nginx on the same host) work in production.
-            "localhost",
             "127.0.0.1",
         ]
     )
