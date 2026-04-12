@@ -130,18 +130,25 @@ ssh $VPS_HOST << 'VPSCOMMAND'
     
     if [ ! -d /opt/satsremit/.git ]; then
         echo "Git not initialized - initializing repository..."
-        cd /opt
+        
+        # Clone to temp location with proper permissions
+        cd /tmp
         git clone https://github.com/bstreetwise/satsremit.git satsremit-fresh
-        rm -rf /opt/satsremit-old
-        mv /opt/satsremit /opt/satsremit-old || true
-        mv /opt/satsremit-fresh /opt/satsremit
+        
+        # Move to /opt with sudo if needed
+        if [ -d /opt/satsremit ]; then
+            sudo rm -rf /opt/satsremit-old
+            sudo mv /opt/satsremit /opt/satsremit-old
+        fi
+        sudo mv /tmp/satsremit-fresh /opt/satsremit
+        sudo chown -R ubuntu:ubuntu /opt/satsremit
     fi
     
     cd /opt/satsremit
     echo "Fetching latest changes from GitHub..."
     git fetch origin
     
-    echo "Pulling from $BRANCH..."
+    echo "Pulling from main..."
     git pull origin main
     
     echo "Updating static files..."
@@ -164,17 +171,25 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     print_step "Restarting services..."
     
     ssh $VPS_HOST << 'RESTARTCOMMAND'
-        # Try systemctl if available
-        if command -v systemctl &> /dev/null; then
-            sudo systemctl restart satsremit 2>/dev/null || echo "Service restart via systemctl not configured"
-        fi
-        
-        # Alternative: kill and restart uvicorn process
+        # Kill existing uvicorn process
         pkill -f "uvicorn.*satsremit" || true
         sleep 1
-        cd /opt/satsremit && nohup /opt/satsremit/venv/bin/uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 2 > /tmp/uvicorn.log 2>&1 &
+        
+        # Restart with proper environment
+        cd /opt/satsremit
+        
+        # Check if virtualenv exists
+        if [ -f venv/bin/uvicorn ]; then
+            echo "Starting Uvicorn from virtualenv..."
+            nohup venv/bin/uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 2 > /tmp/uvicorn.log 2>&1 &
+        else
+            echo "Virtual environment not found at /opt/satsremit/venv"
+            echo "Trying to use system uvicorn..."
+            nohup /opt/satsremit/venv/bin/uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 2 > /tmp/uvicorn.log 2>&1 &
+        fi
+        
         sleep 2
-        echo "Uvicorn restarted (check status with: ps aux | grep uvicorn)"
+        ps aux | grep uvicorn | grep -v grep && echo "Uvicorn is running" || echo "Uvicorn may have failed to start - check /tmp/uvicorn.log"
 RESTARTCOMMAND
     
     print_success "Services restarted"
