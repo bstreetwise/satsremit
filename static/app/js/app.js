@@ -205,33 +205,31 @@ function display_quote(quote, requestedReceiverAmount = null) {
     console.log('DISPLAY_QUOTE:', 'requested=', requestedReceiverAmount, 'final=', receiverAmount, 'quote.amount_zar=', quote.amount_zar);
     
     quoteDisplay.innerHTML = `
-        <div class="quote-card">
-            <div class="quote-row" style="background: #e8f5e9; padding: 0.75rem; border-radius: 4px;">
-                <label style="font-weight: 600; color: #2e7d32;">RECIPIENT GETS:</label>
-                <span style="color: #2e7d32; font-size: 1.1rem; font-weight: 600;">${format_currency(receiverAmount)}</span>
-            </div>
-            <div class="quote-row">
-                <label>Exchange rate:</label>
-                <span>1 USD = ${parseFloat(quote.rate_usd_per_zar).toFixed(2)} ZAR</span>
-            </div>
-            <div class="quote-row">
-                <label>BTC Rate:</label>
-                <span>1 BTC = ${format_currency(quote.rate_zar_per_btc)}</span>
-            </div>
-            <div class="divider"></div>
-            <div class="quote-row">
-                <label style="color: #666;">Total fees (1.0%):</label>
-                <span style="color: #666;">${format_currency(quote.total_fees_zar)}</span>
-            </div>
-            <div class="divider"></div>
-            <div class="quote-row total" style="background: #1976d2; padding: 1rem; border-radius: 4px; color: white; display: flex; justify-content: space-between; gap: 2rem;">
+        <div style="margin-bottom: 1rem; background: #e8f5e9; padding: 0.75rem; border-radius: 4px;">
+            <p style="margin: 0; font-weight: 600; color: #2e7d32; font-size: 0.9rem;">RECIPIENT GETS:</p>
+            <p style="margin: 0.5rem 0 0 0; font-size: 1.5rem; font-weight: bold; color: #2e7d32;">${format_currency(receiverAmount)}</p>
+        </div>
+        <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 1rem; margin-bottom: 1rem;">
+            <p style="margin: 0; opacity: 0.85; font-size: 0.85rem;">Exchange Rate</p>
+            <p style="margin: 0.5rem 0 0 0; font-size: 1rem;">1 USD = ${parseFloat(quote.rate_usd_per_zar).toFixed(2)} ZAR</p>
+        </div>
+        <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 1rem; margin-bottom: 1rem;">
+            <p style="margin: 0; opacity: 0.85; font-size: 0.85rem;">BTC Rate</p>
+            <p style="margin: 0.5rem 0 0 0; font-size: 1rem;">1 BTC = ${format_currency(quote.rate_zar_per_btc)}</p>
+        </div>
+        <div style="border-top: 1px solid rgba(255,255,255,0.2); padding-top: 1rem; margin-bottom: 1rem;">
+            <p style="margin: 0; opacity: 0.85; font-size: 0.85rem;">Total fees (1.0%):</p>
+            <p style="margin: 0.5rem 0 0 0; font-size: 1rem;">${format_currency(quote.total_fees_zar)}</p>
+        </div>
+        <div style="background: #1976d2; padding: 1rem; border-radius: 4px; color: white; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; gap: 2rem;">
                 <div style="flex: 1;">
-                    <label style="font-weight: 600; font-size: 0.9rem; color: white; display: block;">YOU PAY:</label>
-                    <span style="font-size: 1.3rem; color: white; font-weight: 600; display: block; margin-top: 0.5rem;">${format_currency(quote.amount_zar)}</span>
+                    <p style="margin: 0; font-weight: 600; color: white; font-size: 0.9rem;">YOU PAY:</p>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 1.3rem; font-weight: bold; color: white;">${format_currency(quote.amount_zar)}</p>
                 </div>
                 <div style="flex: 1;">
-                    <label style="font-weight: 600; font-size: 0.9rem; color: white; display: block;">Amount to Send (Sats):</label>
-                    <span style="font-size: 1.3rem; color: white; font-weight: 600; display: block; margin-top: 0.5rem;">${format_sats(quote.amount_sats)}</span>
+                    <p style="margin: 0; font-weight: 600; color: white; font-size: 0.9rem;">Amount to Send (Sats):</p>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 1.3rem; font-weight: bold; color: white;">${format_sats(quote.amount_sats)}</p>
                 </div>
             </div>
         </div>
