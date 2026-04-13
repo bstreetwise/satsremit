@@ -153,12 +153,6 @@ function init_event_listeners() {
 async function load_transfer_page() {
     console.log('*** LOAD_TRANSFER_PAGE CALLED ***');
     
-    // Clear all form fields when loading transfer page
-    const transferForm = document.getElementById('transfer-form');
-    if (transferForm) {
-        transferForm.reset();
-    }
-    
     // Setup amount input blur listener for quote calculation
     const amountInput = document.getElementById('amount-zar');
     console.log('Amount input element found?', !!amountInput);
