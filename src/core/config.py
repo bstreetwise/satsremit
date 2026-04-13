@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     lnd_rest_url: str
     lnd_macaroon_path: str
     lnd_cert_path: str
-    lnd_hold_invoice_expiry_minutes: int = 5760  # 96 hours
+    lnd_hold_invoice_expiry_minutes: int = 30  # 30 minutes
     lnd_invoice_timeout_hours: float = 6.5
 
     # Bitcoin
