@@ -491,7 +491,7 @@ function load_payment_page() {
                 </div>
                 <div class="detail-row">
                     <label>Invoice Expires in:</label>
-                    <span id="invoice-countdown" style="font-weight: bold; color: #d32f2f; font-size: 1.1rem;">15:00</span>
+                    <span id="invoice-countdown" style="font-weight: bold; color: #d32f2f; font-size: 1.1rem;">15 minutes 0 seconds</span>
                 </div>
             </div>
 
@@ -573,7 +573,7 @@ function start_invoice_countdown(expiresAt) {
         const timeRemaining = Math.max(0, Math.floor((expireTime - now) / 1000));
 
         if (timeRemaining <= 0) {
-            countdownElement.textContent = '0:00';
+            countdownElement.textContent = '0 minutes 0 seconds';
             countdownElement.style.color = '#d32f2f';
             clearInterval(window.invoiceCountdownInterval);
             return;
@@ -581,7 +581,9 @@ function start_invoice_countdown(expiresAt) {
 
         const minutes = Math.floor(timeRemaining / 60);
         const seconds = timeRemaining % 60;
-        const displayText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        const minutesText = minutes === 1 ? 'minute' : 'minutes';
+        const secondsText = seconds === 1 ? 'second' : 'seconds';
+        const displayText = `${minutes} ${minutesText} ${seconds} ${secondsText}`;
         
         countdownElement.textContent = displayText;
         
