@@ -899,3 +899,9 @@ footer {
         font-size: 1rem;
     }
 }
+
+/* ===== INPUT PLACEHOLDER STYLING ===== */
+.grayed-placeholder::placeholder {
+    color: #999;
+    opacity: 0.6;
+}
