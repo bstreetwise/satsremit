@@ -271,18 +271,18 @@ class RateService:
 
     async def _fetch_usd_zar_direct(self) -> Decimal:
         """
-        Fetch USD to ZAR exchange rate directly from reliable sources
-        Uses CoinGecko's fiat conversion for accurate market rates
+        Fetch USD to ZAR exchange rate from fiat exchange API (matches Google Finance rates)
         
         Returns:
             Decimal ZAR per USD (e.g., Decimal("20.50"))
         """
         try:
-            # Try CoinGecko's USD to ZAR conversion (most reliable)
-            url = "https://api.coingecko.com/api/v3/simple/price"
+            # Use exchangerate.host API for direct fiat conversion (free, no auth)
+            # This provides rates aligned with major financial sources like Google Finance
+            url = "https://api.exchangerate.host/latest"
             params = {
-                "ids": "bitcoin",
-                "vs_currencies": "usd,zar",
+                "base": "USD",
+                "symbols": "ZAR",
             }
 
             async with httpx.AsyncClient(timeout=30) as client:
@@ -290,21 +290,21 @@ class RateService:
                 response.raise_for_status()
 
             data = response.json()
-            btc_usd = Decimal(str(data["bitcoin"]["usd"]))
-            btc_zar = Decimal(str(data["bitcoin"]["zar"]))
-
-            if btc_usd <= 0 or btc_zar <= 0:
-                raise ValueError("Invalid rates from CoinGecko")
-
-            # Calculate USD to ZAR rate
-            usd_to_zar = btc_zar / btc_usd
             
-            logger.debug(f"CoinGecko USD/ZAR rate: 1 USD = {usd_to_zar:.2f} ZAR")
+            if not data.get("success"):
+                raise ValueError(f"Exchange rate API error: {data.get('error', 'Unknown error')}")
+
+            usd_to_zar = Decimal(str(data["rates"]["ZAR"]))
+
+            if usd_to_zar <= 0:
+                raise ValueError("Invalid rate from exchange API")
+
+            logger.debug(f"ExchangeRate.host USD/ZAR rate: 1 USD = {usd_to_zar:.2f} ZAR")
             
             return usd_to_zar
 
         except httpx.HTTPError as e:
-            logger.error(f"CoinGecko USD/ZAR fetch error: {e}")
+            logger.error(f"ExchangeRate API fetch error: {e}")
             # Try alternative method
             try:
                 return await self._fetch_usd_zar_fallback()
@@ -314,29 +314,26 @@ class RateService:
 
     async def _fetch_usd_zar_fallback(self) -> Decimal:
         """
-        Fallback method to fetch USD/ZAR rate using Bitcoin cross-rate
+        Fallback method to fetch USD/ZAR rate from alternative API
         
         Returns:
             Decimal ZAR per USD
         """
         try:
-            # Get BTC prices in both currencies
-            url = "https://api.coingecko.com/api/v3/simple/price"
-            params = {
-                "ids": "bitcoin",
-                "vs_currencies": "usd,zar",
-            }
+            # Fallback to another exchange rate API
+            url = "https://open.er-api.com/v6/latest/USD"
 
             async with httpx.AsyncClient(timeout=30) as client:
-                response = await client.get(url, params=params)
+                response = await client.get(url)
                 response.raise_for_status()
 
             data = response.json()
-            btc_usd = Decimal(str(data["bitcoin"]["usd"]))
-            btc_zar = Decimal(str(data["bitcoin"]["zar"]))
+            
+            if data.get("result") != "success":
+                raise ValueError("Fallback API error")
 
-            usd_to_zar = btc_zar / btc_usd
-            logger.debug(f"Fallback USD/ZAR via BTC cross-rate: 1 USD = {usd_to_zar:.2f} ZAR")
+            usd_to_zar = Decimal(str(data["rates"]["ZAR"]))
+            logger.debug(f"Fallback USD/ZAR via open.er-api: 1 USD = {usd_to_zar:.2f} ZAR")
             
             return usd_to_zar
 
