@@ -7,12 +7,24 @@ console.log('=== APP.JS LOADED AT', new Date().toISOString(), '===');
 
 const APP_STATE = {
     currentTransfer: null,
-    userPhone: localStorage.getItem('user_phone') || null,
+    userPhone: null,  // Don't load from localStorage - forms reset on page load
 };
 
 // ===== INITIALIZATION =====
 
 document.addEventListener('DOMContentLoaded', async function () {
+    // Clear all localStorage on page load to reset forms
+    localStorage.clear();
+    
+    // Reset all form inputs
+    document.querySelectorAll('input, select, textarea').forEach(input => {
+        if (input.type === 'checkbox' || input.type === 'radio') {
+            input.checked = false;
+        } else {
+            input.value = '';
+        }
+    });
+    
     init_navigation();
     init_event_listeners();
 
@@ -94,6 +106,12 @@ function init_event_listeners() {
         });
     }
 
+    // Pre-fill user phone from localStorage (for returning users)
+    const phoneInput = document.getElementById('sender-phone');
+    if (phoneInput && APP_STATE.userPhone) {
+        phoneInput.value = APP_STATE.userPhone;
+    }
+
     // Amount input - fetch quote on blur only
     const amountInput = document.getElementById('amount-zar');
     if (amountInput) {
@@ -136,9 +154,10 @@ function init_event_listeners() {
 async function load_transfer_page() {
     console.log('*** LOAD_TRANSFER_PAGE CALLED ***');
     
-    const phoneInput = document.getElementById('sender-phone');
-    if (phoneInput && APP_STATE.userPhone) {
-        phoneInput.value = APP_STATE.userPhone;
+    // Clear all form fields when loading transfer page
+    const transferForm = document.getElementById('transfer-form');
+    if (transferForm) {
+        transferForm.reset();
     }
     
     // Setup amount input blur listener for quote calculation
