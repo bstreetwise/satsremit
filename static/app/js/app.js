@@ -237,9 +237,42 @@ function display_quote(quote, requestedReceiverAmount = null) {
 async function update_homepage_quote() {
     const amountInput = document.getElementById('homepage-amount-send');
     const quoteResults = document.getElementById('homepage-quote-results');
+    const errorMsg = document.getElementById('homepage-amount-error');
+    const errorText = document.getElementById('homepage-amount-error-text');
     const amount = parseFloat(amountInput?.value);
 
+    const MIN_AMOUNT = 100;
+    const MAX_AMOUNT = 500;
+
+    // Clear previous error message
+    if (errorMsg) {
+        errorMsg.style.display = 'none';
+    }
+
     if (!amount || amount <= 0) {
+        if (quoteResults) {
+            quoteResults.style.display = 'none';
+        }
+        return;
+    }
+
+    // Validate amount is within allowed range
+    if (amount < MIN_AMOUNT) {
+        if (errorMsg && errorText) {
+            errorText.textContent = `Amount too low. Please enter at least ZAR ${MIN_AMOUNT}`;
+            errorMsg.style.display = 'block';
+        }
+        if (quoteResults) {
+            quoteResults.style.display = 'none';
+        }
+        return;
+    }
+
+    if (amount > MAX_AMOUNT) {
+        if (errorMsg && errorText) {
+            errorText.textContent = `Amount too high. Maximum allowed is ZAR ${MAX_AMOUNT}`;
+            errorMsg.style.display = 'block';
+        }
         if (quoteResults) {
             quoteResults.style.display = 'none';
         }
@@ -264,6 +297,10 @@ async function update_homepage_quote() {
         }
     } catch (error) {
         console.error('Homepage quote error:', error);
+        if (errorMsg && errorText && error.response?.detail) {
+            errorText.textContent = error.response.detail;
+            errorMsg.style.display = 'block';
+        }
         if (quoteResults) {
             quoteResults.style.display = 'none';
         }
