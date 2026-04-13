@@ -285,13 +285,15 @@ async function update_homepage_quote() {
         
         // Display quote results on homepage
         if (quoteResults) {
-            const receiveAmount = parseFloat(quote.receiver_gets_zar);
+            const recipientAmount = parseFloat(quote.amount_zar);  // What recipient should get
+            const totalFees = parseFloat(quote.total_fees_zar);      // Fee to add on top
+            const totalToPay = recipientAmount + totalFees;          // Total sender pays
             const usdPerZar = parseFloat(quote.rate_usd_per_zar);
-            const totalFees = parseFloat(quote.total_fees_zar);
 
-            document.getElementById('homepage-receive-amount').textContent = format_currency(receiveAmount);
+            document.getElementById('homepage-receive-amount').textContent = format_currency(recipientAmount);
             document.getElementById('homepage-exchange-rate').textContent = `1 USD = ${usdPerZar.toFixed(2)} ZAR`;
             document.getElementById('homepage-total-fee').textContent = `${format_currency(totalFees)}`;
+            document.getElementById('homepage-total-pay').textContent = `${format_currency(totalToPay)}`;
             
             quoteResults.style.display = 'block';
         }
