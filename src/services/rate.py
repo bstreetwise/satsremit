@@ -271,27 +271,23 @@ class RateService:
 
     async def _fetch_usd_zar_direct(self) -> Decimal:
         """
-        Fetch USD to ZAR exchange rate from fiat exchange API (matches Google Finance rates)
+        Fetch USD to ZAR exchange rate from free fiat exchange API (Google Finance-aligned rates)
         
         Returns:
             Decimal ZAR per USD (e.g., Decimal("20.50"))
         """
         try:
-            # Use exchangerate.host API for direct fiat conversion (free, no auth)
-            # This provides rates aligned with major financial sources like Google Finance
-            url = "https://api.exchangerate.host/latest"
-            params = {
-                "base": "USD",
-                "symbols": "ZAR",
-            }
+            # Use open.er-api (completely free, no auth required)
+            # Provides rates aligned with major financial sources like Google Finance
+            url = "https://open.er-api.com/v6/latest/USD"
 
             async with httpx.AsyncClient(timeout=30) as client:
-                response = await client.get(url, params=params)
+                response = await client.get(url)
                 response.raise_for_status()
 
             data = response.json()
             
-            if not data.get("success"):
+            if data.get("result") != "success":
                 raise ValueError(f"Exchange rate API error: {data.get('error', 'Unknown error')}")
 
             usd_to_zar = Decimal(str(data["rates"]["ZAR"]))
@@ -299,12 +295,12 @@ class RateService:
             if usd_to_zar <= 0:
                 raise ValueError("Invalid rate from exchange API")
 
-            logger.debug(f"ExchangeRate.host USD/ZAR rate: 1 USD = {usd_to_zar:.2f} ZAR")
+            logger.debug(f"open.er-api USD/ZAR rate: 1 USD = {usd_to_zar:.2f} ZAR")
             
             return usd_to_zar
 
-        except httpx.HTTPError as e:
-            logger.error(f"ExchangeRate API fetch error: {e}")
+        except Exception as e:
+            logger.error(f"open.er-api USD/ZAR fetch error: {e}")
             # Try alternative method
             try:
                 return await self._fetch_usd_zar_fallback()
@@ -314,14 +310,14 @@ class RateService:
 
     async def _fetch_usd_zar_fallback(self) -> Decimal:
         """
-        Fallback method to fetch USD/ZAR rate from alternative API
+        Fallback method to fetch USD/ZAR rate from alternative free API
         
         Returns:
             Decimal ZAR per USD
         """
         try:
-            # Fallback to another exchange rate API
-            url = "https://open.er-api.com/v6/latest/USD"
+            # Fallback to exchangerate-api (offers limited free tier)
+            url = "https://v6.exchangerate-api.com/v6/latest/USD"
 
             async with httpx.AsyncClient(timeout=30) as client:
                 response = await client.get(url)
@@ -332,8 +328,8 @@ class RateService:
             if data.get("result") != "success":
                 raise ValueError("Fallback API error")
 
-            usd_to_zar = Decimal(str(data["rates"]["ZAR"]))
-            logger.debug(f"Fallback USD/ZAR via open.er-api: 1 USD = {usd_to_zar:.2f} ZAR")
+            usd_to_zar = Decimal(str(data["conversion_rates"]["ZAR"]))
+            logger.debug(f"Fallback USD/ZAR via exchangerate-api: 1 USD = {usd_to_zar:.2f} ZAR")
             
             return usd_to_zar
 
