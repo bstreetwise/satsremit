@@ -115,6 +115,20 @@ function init_event_listeners() {
             update_quote_display();
         });
     }
+
+    // Homepage Quote Calculator
+    const homepageAmountInput = document.getElementById('homepage-amount-send');
+    const homepageLocationSelect = document.getElementById('homepage-location');
+    if (homepageAmountInput) {
+        homepageAmountInput.addEventListener('input', () => {
+            update_homepage_quote();
+        });
+    }
+    if (homepageLocationSelect) {
+        homepageLocationSelect.addEventListener('change', () => {
+            update_homepage_quote();
+        });
+    }
 }
 
 // ===== TRANSFER FORM HANDLING =====
@@ -216,6 +230,46 @@ function display_quote(quote, requestedReceiverAmount = null) {
             </div>
         </div>
     `;
+}
+
+// ===== HOMEPAGE QUOTE CALCULATOR =====
+
+async function update_homepage_quote() {
+    const amountInput = document.getElementById('homepage-amount-send');
+    const quoteResults = document.getElementById('homepage-quote-results');
+    const amount = parseFloat(amountInput?.value);
+
+    if (!amount || amount <= 0) {
+        if (quoteResults) {
+            quoteResults.style.display = 'none';
+        }
+        return;
+    }
+
+    try {
+        // Fetch quote using sender amount
+        const quote = await API.getQuote(amount);
+        
+        // Display quote results on homepage
+        if (quoteResults) {
+            const receiveAmount = quote.receiver_gets_zar;
+            const exchangeRate = quote.rate_zar_per_btc;
+            const totalFees = quote.total_fees_zar;
+            const youPay = quote.amount_zar;
+
+            document.getElementById('homepage-receive-amount').textContent = format_currency(receiveAmount);
+            document.getElementById('homepage-exchange-rate').textContent = `1 ZAR = ${(1/exchangeRate).toFixed(6)} USD`;
+            document.getElementById('homepage-total-fee').textContent = `${format_currency(totalFees)}`;
+            document.getElementById('homepage-you-pay').textContent = `${format_currency(youPay)}`;
+            
+            quoteResults.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Homepage quote error:', error);
+        if (quoteResults) {
+            quoteResults.style.display = 'none';
+        }
+    }
 }
 
 async function handle_transfer_submit(event) {

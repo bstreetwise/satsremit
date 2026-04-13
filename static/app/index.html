@@ -55,67 +55,150 @@
         <main>
             <!-- HOME PAGE -->
             <div id="page-home" class="page active">
-                <div class="hero-section" style="text-align: center; margin-bottom: 3rem;">
-                    <h1 style="font-size: 2.5rem; color: #f7931a; margin-bottom: 1rem;">
+                <!-- Hero Section -->
+                <div class="hero-section" style="text-align: center; margin-bottom: 2rem;">
+                    <h1 style="font-size: 2.5rem; color: #f7931a; margin-bottom: 0.5rem;">
                         <i class="fas fa-bolt"></i> SatsRemit
                     </h1>
-                    <p style="font-size: 1.2rem; color: #666; margin-bottom: 2rem;">
-                        Fast and secure money transfers
+                    <p style="font-size: 1.1rem; color: #666; margin-bottom: 1rem;">
+                        Fast and secure money transfers via Bitcoin Lightning
                     </p>
-                    <a href="#transfer" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                </div>
+
+                <!-- QUOTE CALCULATOR WIDGET (Main Focus) -->
+                <div class="card quote-calculator-card" style="background: linear-gradient(135deg, #f7931a 0%, #e58a0c 100%); color: white; padding: 2rem; margin-bottom: 2rem;">
+                    <h2 style="text-align: center; margin-top: 0; margin-bottom: 1.5rem; font-size: 1.5rem;">
+                        <i class="fas fa-calculator"></i> Check Your Rate
+                    </h2>
+                    
+                    <!-- Quote Form -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; font-size: 0.9rem;">You Send</label>
+                            <div style="display: flex; align-items: center;">
+                                <input type="number" id="homepage-amount-send" placeholder="1000" step="0.01" min="0" style="flex: 1; padding: 0.75rem; border: none; border-radius: 4px; font-size: 1rem;" value="1000">
+                                <span style="margin-left: 0.5rem; font-weight: bold;">ZAR</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: bold; font-size: 0.9rem;">Recipient Location</label>
+                            <select id="homepage-location" style="width: 100%; padding: 0.75rem; border: none; border-radius: 4px; font-size: 1rem;">
+                                <option value="ZWE_HRR">Harare</option>
+                                <option value="ZWE_BUL">Bulawayo</option>
+                                <option value="ZWE_GWR">Gweru</option>
+                                <option value="ZWE_MUT">Mutare</option>
+                                <option value="ZWE_KWE">Kwekwe</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Quote Results -->
+                    <div id="homepage-quote-results" style="display: none; background: rgba(255,255,255,0.15); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div>
+                                <p style="margin: 0; opacity: 0.9; font-size: 0.9rem;">They Receive</p>
+                                <p style="margin: 0; font-size: 1.5rem; font-weight: bold;" id="homepage-receive-amount">0.00</p>
+                            </div>
+                            <div>
+                                <p style="margin: 0; opacity: 0.9; font-size: 0.9rem;">Exchange Rate</p>
+                                <p style="margin: 0; font-size: 1.5rem; font-weight: bold;" id="homepage-exchange-rate">1 ZAR = 0.00 USD</p>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <p style="margin: 0; opacity: 0.9; font-size: 0.9rem;">Your Cost</p>
+                                <p style="margin: 0; font-size: 1.3rem; font-weight: bold;" id="homepage-total-fee">0.00 ZAR</p>
+                            </div>
+                            <div>
+                                <p style="margin: 0; opacity: 0.9; font-size: 0.9rem;">You Pay</p>
+                                <p style="margin: 0; font-size: 1.3rem; font-weight: bold;" id="homepage-you-pay">0.00 ZAR</p>
+                            </div>
+                        </div>
+                        <div style="text-align: center; margin-top: 1rem; font-size: 0.85rem; opacity: 0.85;">
+                            <i class="fas fa-clock"></i> Arrives in ~5-10 minutes
+                        </div>
+                    </div>
+
+                    <!-- CTA Button -->
+                    <button onclick="document.querySelector('[href=\\'#transfer\\']').click()" class="btn btn-primary" style="width: 100%; font-size: 1.1rem; padding: 1rem; background-color: white; color: #f7931a; font-weight: bold; border: none; cursor: pointer;">
                         <i class="fas fa-paper-plane"></i> Send Money Now
-                    </a>
+                    </button>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin: 2rem 0;">
-                    <!-- Feature Card 1 -->
-                    <div class="card">
-                        <div style="text-align: center; color: #f7931a; font-size: 3rem; margin-bottom: 1rem;">
-                            <i class="fas fa-bolt"></i>
+                <!-- Why SatsRemit Section -->
+                <div style="margin-bottom: 2rem;">
+                    <h2 style="text-align: center; margin-top: 0; margin-bottom: 1.5rem; font-size: 1.5rem; color: #333;">Why Choose SatsRemit?</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                        <!-- Feature 1 -->
+                        <div class="card" style="text-align: center; border-left: 4px solid #f7931a;">
+                            <div style="color: #f7931a; font-size: 2.5rem; margin-bottom: 1rem;">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <h3 style="margin: 0.5rem 0; color: #333; font-size: 1.1rem;">Lightning Fast</h3>
+                            <p style="color: #666; margin: 0; font-size: 0.95rem;">
+                                Bitcoin Lightning Network means money arrives in minutes, not days
+                            </p>
                         </div>
-                        <h3 style="text-align: center;">Fast</h3>
-                        <p style="text-align: center; color: #666;">
-                            Payments settle in minutes with Bitcoin Lightning Network
-                        </p>
-                    </div>
 
-                    <!-- Feature Card 2 -->
-                    <div class="card">
-                        <div style="text-align: center; color: #f7931a; font-size: 3rem; margin-bottom: 1rem;">
-                            <i class="fas fa-coins"></i>
+                        <!-- Feature 2 -->
+                        <div class="card" style="text-align: center; border-left: 4px solid #f7931a;">
+                            <div style="color: #f7931a; font-size: 2.5rem; margin-bottom: 1rem;">
+                                <i class="fas fa-percent"></i>
+                            </div>
+                            <h3 style="margin: 0.5rem 0; color: #333; font-size: 1.1rem;">Ultra-Low Fees</h3>
+                            <p style="color: #666; margin: 0; font-size: 0.95rem;">
+                                Only 1% total fee with transparent pricing—no hidden charges
+                            </p>
                         </div>
-                        <h3 style="text-align: center;">Cheap</h3>
-                        <p style="text-align: center; color: #666;">
-                            Ultra-low fees with transparent pricing
-                        </p>
-                    </div>
 
-                    <!-- Feature Card 3 -->
-                    <div class="card">
-                        <div style="text-align: center; color: #f7931a; font-size: 3rem; margin-bottom: 1rem;">
-                            <i class="fas fa-lock"></i>
+                        <!-- Feature 3 -->
+                        <div class="card" style="text-align: center; border-left: 4px solid #f7931a;">
+                            <div style="color: #f7931a; font-size: 2.5rem; margin-bottom: 1rem;">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <h3 style="margin: 0.5rem 0; color: #333; font-size: 1.1rem;">Secure & Decentralized</h3>
+                            <p style="color: #666; margin: 0; font-size: 0.95rem;">
+                                Bitcoin's security + peer-to-peer transfers = no middlemen
+                            </p>
                         </div>
-                        <h3 style="text-align: center;">Secure</h3>
-                        <p style="text-align: center; color: #666;">
-                            Decentralized payments with Bitcoin security
-                        </p>
+
+                        <!-- Feature 4 -->
+                        <div class="card" style="text-align: center; border-left: 4px solid #f7931a;">
+                            <div style="color: #f7931a; font-size: 2.5rem; margin-bottom: 1rem;">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <h3 style="margin: 0.5rem 0; color: #333; font-size: 1.1rem;">24/7 Available</h3>
+                            <p style="color: #666; margin: 0; font-size: 0.95rem;">
+                                Send anytime, any day—no bank hours, no delays
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="card" style="background: linear-gradient(135deg, #f7931a 0%, #e58a0c 100%); color: white; text-align: center;">
-                    <h3>How It Works</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 2rem; margin-top: 1.5rem;">
-                        <div>
-                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">1</div>
-                            <p>Enter recipient details</p>
+                <!-- How It Works Section -->
+                <div class="card" style="background: linear-gradient(135deg, #f7931a 0%, #e58a0c 100%); color: white; text-align: center; padding: 2rem;">
+                    <h2 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.5rem;">How SatsRemit Works</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1.5rem;">
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <div style="background: rgba(255,255,255,0.2); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 0.5rem;">
+                                <span style="font-weight: bold;">1</span>
+                            </div>
+                            <p style="margin: 0; font-weight: bold;">Enter Details</p>
+                            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.9;">Your details &<br>recipient info</p>
                         </div>
-                        <div>
-                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">2</div>
-                            <p>Pay Lightning invoice</p>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <div style="background: rgba(255,255,255,0.2); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 0.5rem;">
+                                <span style="font-weight: bold;">2</span>
+                            </div>
+                            <p style="margin: 0; font-weight: bold;">Pay via Lightning</p>
+                            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.9;">Instant Bitcoin<br>settlement</p>
                         </div>
-                        <div>
-                            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">3</div>
-                            <p>Recipient receives ZAR</p>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <div style="background: rgba(255,255,255,0.2); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 0.5rem;">
+                                <span style="font-weight: bold;">3</span>
+                            </div>
+                            <p style="margin: 0; font-weight: bold;">Agent Release</p>
+                            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.9;">Local agent pays<br>recipient in ZAR</p>
                         </div>
                     </div>
                 </div>

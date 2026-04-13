@@ -412,6 +412,39 @@ input[type="tel"], input[type="email"] {
     color: var(--color-text-light);
 }
 
+/* ===== HOMEPAGE QUOTE CALCULATOR ===== */
+
+.quote-calculator-card {
+    box-shadow: var(--shadow-lg);
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.quote-calculator-card input,
+.quote-calculator-card select {
+    background: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #333;
+}
+
+.quote-calculator-card input::placeholder {
+    color: #999;
+}
+
+.quote-calculator-card label {
+    opacity: 0.95;
+}
+
 /* ===== PAYMENT PAGE ===== */
 
 .payment-card {
