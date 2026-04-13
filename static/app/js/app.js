@@ -309,6 +309,42 @@ async function update_homepage_quote() {
     }
 }
 
+// ===== CALCULATOR TO FORM TRANSFER =====
+
+function transfer_from_calculator() {
+    // Get values from calculator
+    const amount = document.getElementById('homepage-amount-send')?.value;
+    const location = document.getElementById('homepage-location')?.value;
+    
+    // Validate calculator has values
+    if (!amount || !location) {
+        show_alert('Please enter amount and select location first', 'warning');
+        return;
+    }
+    
+    // Pre-fill the send form with calculator values
+    const amountField = document.getElementById('amount-zar');
+    const locationField = document.getElementById('receiver-location');
+    
+    if (amountField) {
+        amountField.value = amount;
+    }
+    if (locationField) {
+        locationField.value = location;
+    }
+    
+    // Navigate to transfer section
+    const transferLink = document.querySelector('[href="#transfer"]');
+    if (transferLink) {
+        transferLink.click();
+        
+        // After navigation, trigger quote calculation on the form
+        setTimeout(async () => {
+            await update_quote_display();
+        }, 100);
+    }
+}
+
 async function handle_transfer_submit(event) {
     event.preventDefault();
 
