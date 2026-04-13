@@ -239,7 +239,7 @@ main {
 /* ===== BUTTONS ===== */
 
 .btn {
-    padding: calc(var(--spacing) * 0.75) var(--spacing);
+    padding: 0.6rem var(--spacing);
     border-radius: var(--radius);
     border: none;
     font-size: 1rem;
@@ -286,19 +286,19 @@ main {
 /* ===== FORMS ===== */
 
 .form-group {
-    margin-bottom: calc(var(--spacing) * 1.5);
+    margin-bottom: 0.8rem;
     display: flex;
     flex-direction: column;
 }
 
 label {
-    margin-bottom: calc(var(--spacing) / 2);
+    margin-bottom: 0.3rem;
     font-weight: 600;
     color: var(--color-text);
 }
 
 input, select, textarea {
-    padding: calc(var(--spacing) * 0.75) var(--spacing);
+    padding: 0.6rem var(--spacing);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     font-size: 1rem;
@@ -322,7 +322,7 @@ input[type="tel"], input[type="email"] {
     background: white;
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    padding: calc(var(--spacing) * 1.5);
+    padding: 1.2rem;
     margin-bottom: var(--spacing);
 }
 
@@ -344,8 +344,8 @@ input[type="tel"], input[type="email"] {
 }
 
 .form-section {
-    margin-bottom: calc(var(--spacing) * 2);
-    padding-bottom: calc(var(--spacing) * 2);
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
     border-bottom: 1px solid var(--color-border);
 }
 
@@ -360,9 +360,10 @@ input[type="tel"], input[type="email"] {
 
 .quote-display {
     background-color: var(--color-light);
-    padding: var(--spacing);
+    padding: 1rem;
     border-radius: var(--radius);
-    margin-bottom: var(--spacing);
+    margin-bottom: 1rem;
+    min-height: auto;
 }
 
 .quote-card {
