@@ -514,10 +514,10 @@ function load_payment_page() {
                     <label>Invoice:</label>
                     <textarea readonly>${transfer.invoice_request}</textarea>
                     <div style="display: flex; gap: 0.8rem; margin-top: 0.8rem;">
-                        <button class="btn btn-secondary" onclick="copy_to_clipboard('${transfer.invoice_request}')" style="flex: 1;">
+                        <button class="btn btn-secondary" onclick="copy_to_clipboard('${transfer.invoice_request}')" style="flex: 1; display: flex; align-items: center; justify-content: center;">
                             <i class="fas fa-copy"></i> Copy
                         </button>
-                        <button class="btn btn-primary" onclick="share_invoice('${transfer.invoice_request}', '${transfer.reference}', '${transfer.amount_zar}', '${transfer.agent_location}')" style="flex: 1;">
+                        <button class="btn btn-primary" onclick="share_invoice('${transfer.invoice_request}', '${transfer.reference}', '${transfer.amount_zar}', '${transfer.agent_location}')" style="flex: 1; display: flex; align-items: center; justify-content: center;">
                             <i class="fas fa-share-alt"></i> Share
                         </button>
                     </div>
