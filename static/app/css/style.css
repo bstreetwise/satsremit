@@ -117,10 +117,15 @@ main {
 .page {
     display: none;
     animation: fadeIn 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: var(--spacing);
+    min-height: calc(100vh - 200px);
 }
 
 .page.active {
-    display: block;
+    display: flex;
 }
 
 @keyframes fadeIn {
@@ -467,6 +472,8 @@ input[type="tel"], input[type="email"] {
     padding: calc(var(--spacing) * 2);
     box-shadow: var(--shadow);
     max-width: 600px;
+    width: 100%;
+    margin: var(--spacing) auto;
 }
 
 .payment-header {
@@ -519,19 +526,24 @@ input[type="tel"], input[type="email"] {
     padding: var(--spacing);
     border-radius: var(--radius);
     margin-bottom: var(--spacing);
+    text-align: center;
 }
 
 .invoice-section h4 {
     color: var(--color-primary);
     margin-bottom: var(--spacing);
+    text-align: center;
 }
 
 .invoice-qr {
     text-align: center;
-    margin-bottom: var(--spacing);
+    margin: var(--spacing) auto;
     background: white;
     padding: var(--spacing);
     border-radius: var(--radius);
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .invoice-qr canvas {
