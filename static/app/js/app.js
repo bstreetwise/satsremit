@@ -289,11 +289,15 @@ async function update_homepage_quote() {
             const totalFees = parseFloat(quote.total_fees_zar);      // Fee to add on top
             const totalToPay = recipientAmount + totalFees;          // Total sender pays
             const usdPerZar = parseFloat(quote.rate_usd_per_zar);
+            const zarPerBtc = parseFloat(quote.rate_zar_per_btc);
+            const amountSats = parseInt(quote.amount_sats);
 
             document.getElementById('homepage-receive-amount').textContent = format_currency(recipientAmount);
             document.getElementById('homepage-exchange-rate').textContent = `1 USD = ${usdPerZar.toFixed(2)} ZAR`;
+            document.getElementById('homepage-btc-rate').textContent = `1 BTC = ${format_currency(zarPerBtc)}`;
             document.getElementById('homepage-total-fee').textContent = `${format_currency(totalFees)}`;
             document.getElementById('homepage-total-pay').textContent = `${format_currency(totalToPay)}`;
+            document.getElementById('homepage-amount-sats').textContent = format_sats(amountSats);
             
             quoteResults.style.display = 'block';
         }
