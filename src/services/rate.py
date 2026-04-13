@@ -24,7 +24,7 @@ class RateService:
     def __init__(self, db: Session):
         self.db = db
         self.settings = get_settings()
-        self.rate_source = self.settings.rate_source or "coingecko"
+        self.rate_source = self.settings.rate_source or "sa_exchanges"
         self.cache_minutes = self.settings.rate_cache_minutes
         self._rate_cache: Dict[str, Dict[str, Any]] = {}
 
@@ -113,6 +113,8 @@ class RateService:
             return await self._fetch_kraken()
         elif source == "bitstamp":
             return await self._fetch_bitstamp()
+        elif source == "sa_exchanges":
+            return await self._fetch_sa_exchanges()
         else:
             raise ValueError(f"Unknown rate source: {source}")
 
@@ -197,6 +199,117 @@ class RateService:
 
         except httpx.HTTPError as e:
             logger.error(f"Bitstamp fetch error: {e}")
+            raise
+
+    async def _fetch_sa_exchanges(self) -> Decimal:
+        """
+        Fetch BTC/ZAR rates from South African exchanges and return the highest rate
+        Fetches from Luno, VALR, and Altcoin Trader
+        
+        Returns:
+            Decimal highest BTC/ZAR rate from SA exchanges
+        """
+        rates = []
+        
+        # Fetch from Luno
+        try:
+            luno_rate = await self._fetch_luno()
+            if luno_rate > 0:
+                rates.append(("Luno", luno_rate))
+                logger.debug(f"Luno BTC/ZAR: {luno_rate}")
+        except Exception as e:
+            logger.warning(f"Failed to fetch Luno rate: {e}")
+        
+        # Fetch from VALR
+        try:
+            valr_rate = await self._fetch_valr()
+            if valr_rate > 0:
+                rates.append(("VALR", valr_rate))
+                logger.debug(f"VALR BTC/ZAR: {valr_rate}")
+        except Exception as e:
+            logger.warning(f"Failed to fetch VALR rate: {e}")
+        
+        # Fetch from Altcoin Trader
+        try:
+            altcoin_rate = await self._fetch_altcoin_trader()
+            if altcoin_rate > 0:
+                rates.append(("Altcoin Trader", altcoin_rate))
+                logger.debug(f"Altcoin Trader BTC/ZAR: {altcoin_rate}")
+        except Exception as e:
+            logger.warning(f"Failed to fetch Altcoin Trader rate: {e}")
+        
+        if not rates:
+            raise ValueError("Failed to fetch rates from all SA exchanges")
+        
+        # Get highest rate
+        highest_source, highest_rate = max(rates, key=lambda x: x[1])
+        logger.info(f"Selected highest SA exchange rate: {highest_rate} ZAR/BTC from {highest_source}")
+        
+        return highest_rate
+
+    async def _fetch_luno(self) -> Decimal:
+        """Fetch BTC/ZAR from Luno API"""
+        try:
+            url = "https://api.luno.com/api/1/ticker"
+            params = {"pair": "XBTRZAR"}
+            
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+            
+            data = response.json()
+            
+            if "bid" not in data or "ask" not in data:
+                raise ValueError("Invalid Luno response")
+            
+            # Use the ask price (seller's price)
+            rate = Decimal(str(data["ask"]))
+            return rate
+        except Exception as e:
+            logger.error(f"Luno fetch error: {e}")
+            raise
+
+    async def _fetch_valr(self) -> Decimal:
+        """Fetch BTC/ZAR from VALR API"""
+        try:
+            url = "https://api.valr.com/v1/public/currencies/BTCZAR/lasttradeprices"
+            
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(url)
+                response.raise_for_status()
+            
+            data = response.json()
+            
+            if "bidPrice" not in data or "askPrice" not in data:
+                raise ValueError("Invalid VALR response")
+            
+            # Use the ask price (seller's price)
+            rate = Decimal(str(data["askPrice"]))
+            return rate
+        except Exception as e:
+            logger.error(f"VALR fetch error: {e}")
+            raise
+
+    async def _fetch_altcoin_trader(self) -> Decimal:
+        """Fetch BTC/ZAR from Altcoin Trader API"""
+        try:
+            url = "https://api.altcointrader.co.za/api/ticker"
+            params = {"pair": "BTCZAR"}
+            
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+            
+            data = response.json()
+            
+            if "ask" not in data:
+                raise ValueError("Invalid Altcoin Trader response")
+            
+            # Use the ask price
+            rate = Decimal(str(data["ask"]))
+            return rate
+        except Exception as e:
+            logger.error(f"Altcoin Trader fetch error: {e}")
             raise
 
     async def get_usd_per_zar(self) -> Decimal:
