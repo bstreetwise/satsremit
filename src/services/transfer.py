@@ -5,7 +5,7 @@ Orchestrates transfer lifecycle: invoice creation, payment verification, settlem
 
 import logging
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from decimal import Decimal
 from enum import Enum
@@ -156,7 +156,7 @@ class TransferService:
 
             # Store invoice details
             payment_hash = invoice["payment_hash"]
-            expiry_at = datetime.utcnow() + timedelta(
+            expiry_at = datetime.now(timezone.utc) + timedelta(
                 hours=self.settings.lnd_invoice_timeout_hours
             )
 
@@ -215,7 +215,7 @@ class TransferService:
             if is_paid and transfer.state == TransferState.INVOICE_GENERATED:
                 # Update transfer state
                 transfer.state = TransferState.PAYMENT_LOCKED
-                transfer.paid_at = datetime.utcnow()
+                transfer.paid_at = datetime.now(timezone.utc)
                 self.db.commit()
 
                 self._log_state_change(
@@ -282,7 +282,7 @@ class TransferService:
                 raise ValueError(f"Transfer {transfer_id} not found")
 
             transfer.receiver_phone_verified = verified
-            transfer.verified_at = datetime.utcnow()
+            transfer.verified_at = datetime.now(timezone.utc)
 
             # Transition state if both conditions met
             if (
@@ -396,7 +396,7 @@ class TransferService:
                 invoice_hash=transfer.invoice_hash,
                 transfer_id=transfer.id,
                 preimage=preimage,   # TypeDecorator encrypts on write
-                expires_at=datetime.utcnow() + timedelta(hours=1),
+                expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
             )
 
             self.db.add(hold_record)
@@ -432,7 +432,7 @@ class TransferService:
 
             # Update transfer
             transfer.state = TransferState.PAYOUT_EXECUTED
-            transfer.payout_at = datetime.utcnow()
+            transfer.payout_at = datetime.now(timezone.utc)
             self.db.commit()
 
             self._log_state_change(
@@ -473,7 +473,7 @@ class TransferService:
                 raise ValueError(f"Transfer {transfer_id} not found")
 
             transfer.state = TransferState.SETTLED
-            transfer.settled_at = datetime.utcnow()
+            transfer.settled_at = datetime.now(timezone.utc)
             self.db.commit()
 
             self._log_state_change(
