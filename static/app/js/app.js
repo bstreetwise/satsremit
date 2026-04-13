@@ -220,13 +220,15 @@ function display_quote(quote, requestedReceiverAmount = null) {
                 <span style="color: #666;">${format_currency(quote.total_fees_zar)}</span>
             </div>
             <div class="divider"></div>
-            <div class="quote-row total" style="background: #1976d2; padding: 1rem; border-radius: 4px; color: white;">
-                <label style="font-weight: 600; font-size: 1rem; color: white;">YOU PAY:</label>
-                <span style="font-size: 1.3rem; color: white; font-weight: 600;">${format_currency(quote.amount_zar)}</span>
-            </div>
-            <div class="quote-row">
-                <label>Bitcoin amount:</label>
-                <span>${format_sats(quote.amount_sats)}</span>
+            <div class="quote-row total" style="background: #1976d2; padding: 1rem; border-radius: 4px; color: white; display: flex; justify-content: space-between; gap: 2rem;">
+                <div style="flex: 1;">
+                    <label style="font-weight: 600; font-size: 0.9rem; color: white; display: block;">YOU PAY:</label>
+                    <span style="font-size: 1.3rem; color: white; font-weight: 600; display: block; margin-top: 0.5rem;">${format_currency(quote.amount_zar)}</span>
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-weight: 600; font-size: 0.9rem; color: white; display: block;">Amount to Send (Sats):</label>
+                    <span style="font-size: 1.3rem; color: white; font-weight: 600; display: block; margin-top: 0.5rem;">${format_sats(quote.amount_sats)}</span>
+                </div>
             </div>
         </div>
     `;
