@@ -157,7 +157,7 @@ class TransferService:
             # Store invoice details
             payment_hash = invoice["payment_hash"]
             expiry_at = datetime.utcnow() + timedelta(
-                minutes=self.settings.lnd_hold_invoice_expiry_minutes
+                hours=self.settings.lnd_invoice_timeout_hours
             )
 
             transfer.invoice_hash = payment_hash
