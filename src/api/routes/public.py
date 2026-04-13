@@ -111,6 +111,9 @@ async def quote_transfer(
 
         # Get fee breakdown
         fees = await rate_svc.get_fee_breakdown(amount_zar)
+        
+        # Get USD to ZAR rate (aggregated from SA + Zimbabwe markets)
+        rate_usd_per_zar = await rate_svc.get_usd_per_zar()
 
         return TransferQuoteResponse(
             amount_zar=fees["amount_zar"],
@@ -120,6 +123,7 @@ async def quote_transfer(
             total_fees_zar=fees["total_fees_zar"],
             receiver_gets_zar=fees["receiver_gets_zar"],
             rate_zar_per_btc=validation["rate_zar_per_btc"],
+            rate_usd_per_zar=rate_usd_per_zar,
         )
 
     except HTTPException:

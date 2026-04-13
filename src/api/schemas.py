@@ -43,6 +43,7 @@ class TransferQuoteResponse(BaseModel):
     total_fees_zar: Decimal
     receiver_gets_zar: Decimal
     rate_zar_per_btc: Decimal
+    rate_usd_per_zar: Decimal = Field(description="USD per ZAR exchange rate (aggregated from SA + Zimbabwe markets)")
 
 
 class TransferInitiateResponse(BaseModel):

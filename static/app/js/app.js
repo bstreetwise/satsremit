@@ -212,7 +212,7 @@ function display_quote(quote, requestedReceiverAmount = null) {
             </div>
             <div class="quote-row">
                 <label>Exchange rate:</label>
-                <span>${format_currency(quote.rate_zar_per_btc)} per BTC</span>
+                <span>1 USD = ${(1/quote.rate_usd_per_zar).toFixed(2)} ZAR</span>
             </div>
             <div class="divider"></div>
             <div class="quote-row">
@@ -253,11 +253,11 @@ async function update_homepage_quote() {
         // Display quote results on homepage
         if (quoteResults) {
             const receiveAmount = quote.receiver_gets_zar;
-            const exchangeRate = quote.rate_zar_per_btc;
+            const usdPerZar = quote.rate_usd_per_zar || (1 / (quote.rate_zar_per_btc / Decimal("24000000")));
             const totalFees = quote.total_fees_zar;
 
             document.getElementById('homepage-receive-amount').textContent = format_currency(receiveAmount);
-            document.getElementById('homepage-exchange-rate').textContent = `1 ZAR = ${(1/exchangeRate).toFixed(6)} USD`;
+            document.getElementById('homepage-exchange-rate').textContent = `1 USD = ${(1/usdPerZar).toFixed(2)} ZAR`;
             document.getElementById('homepage-total-fee').textContent = `${format_currency(totalFees)}`;
             
             quoteResults.style.display = 'block';
