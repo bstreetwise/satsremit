@@ -212,7 +212,7 @@ function display_quote(quote, requestedReceiverAmount = null) {
             </div>
             <div class="quote-row">
                 <label>Exchange rate:</label>
-                <span>1 USD = ${(1/quote.rate_usd_per_zar).toFixed(2)} ZAR</span>
+                <span>1 USD = ${quote.rate_usd_per_zar.toFixed(2)} ZAR</span>
             </div>
             <div class="divider"></div>
             <div class="quote-row">
@@ -290,7 +290,7 @@ async function update_homepage_quote() {
             const totalFees = quote.total_fees_zar;
 
             document.getElementById('homepage-receive-amount').textContent = format_currency(receiveAmount);
-            document.getElementById('homepage-exchange-rate').textContent = `1 USD = ${(1/usdPerZar).toFixed(2)} ZAR`;
+            document.getElementById('homepage-exchange-rate').textContent = `1 USD = ${usdPerZar.toFixed(2)} ZAR`;
             document.getElementById('homepage-total-fee').textContent = `${format_currency(totalFees)}`;
             
             quoteResults.style.display = 'block';
