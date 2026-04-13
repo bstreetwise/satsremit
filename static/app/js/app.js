@@ -490,8 +490,8 @@ function load_payment_page() {
                     <span>${transfer.agent_name} in ${transfer.agent_location}</span>
                 </div>
                 <div class="detail-row">
-                    <label>Expires at:</label>
-                    <span>${format_date(transfer.expires_at)}</span>
+                    <label>Invoice Expires in:</label>
+                    <span id="invoice-countdown" style="font-weight: bold; color: #d32f2f; font-size: 1.1rem;">15:00</span>
                 </div>
             </div>
 
@@ -545,6 +545,9 @@ function load_payment_page() {
     // Generate QR code
     generate_qr_code(transfer.invoice_request);
 
+    // Start countdown timer
+    start_invoice_countdown(transfer.expires_at);
+
     // Auto-check payment status periodically (every 5 seconds)
     check_payment_status();
     
@@ -554,7 +557,47 @@ function load_payment_page() {
     }
     window.paymentCheckInterval = setInterval(check_payment_status, 5000);
 }
+// Countdown timer for invoice expiration
+function start_invoice_countdown(expiresAt) {
+    // Clear any existing countdown interval
+    if (window.invoiceCountdownInterval) {
+        clearInterval(window.invoiceCountdownInterval);
+    }
 
+    const countdownElement = document.getElementById('invoice-countdown');
+    if (!countdownElement) return;
+
+    function update_countdown() {
+        const now = new Date();
+        const expireTime = new Date(expiresAt);
+        const timeRemaining = Math.max(0, Math.floor((expireTime - now) / 1000));
+
+        if (timeRemaining <= 0) {
+            countdownElement.textContent = '0:00';
+            countdownElement.style.color = '#d32f2f';
+            clearInterval(window.invoiceCountdownInterval);
+            return;
+        }
+
+        const minutes = Math.floor(timeRemaining / 60);
+        const seconds = timeRemaining % 60;
+        const displayText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        countdownElement.textContent = displayText;
+        
+        // Change color based on time remaining
+        if (timeRemaining <= 60) {
+            countdownElement.style.color = '#ff6f00';  // Orange for last minute
+        } else if (timeRemaining <= 300) {
+            countdownElement.style.color = '#f57c00'; // Orange
+        } else {
+            countdownElement.style.color = '#d32f2f';  // Red (default)
+        }
+    }
+
+    update_countdown();
+    window.invoiceCountdownInterval = setInterval(update_countdown, 1000);
+}
 async function check_payment_status() {
     if (!APP_STATE.currentTransfer) return;
 

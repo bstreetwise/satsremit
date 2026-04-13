@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     lnd_macaroon_path: str
     lnd_cert_path: str
     lnd_hold_invoice_expiry_minutes: int = 30  # 30 minutes
-    lnd_invoice_timeout_hours: float = 6.5
+    lnd_invoice_timeout_hours: float = 0.25  # 15 minutes
 
     # Bitcoin
     bitcoin_network: str = "testnet"  # testnet or mainnet
