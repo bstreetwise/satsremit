@@ -248,55 +248,55 @@
 
             <!-- TRANSFER PAGE -->
             <div id="page-transfer" class="page">
-                <div class="transfer-form">
-                    <div class="card">
-                        <div class="card-header">
-                            <h3>Send Remittance</h3>
-                            <p style="color: #666; margin: 0;">Send money to Zimbabwe in minutes</p>
+                <div class="transfer-form" style="margin: 2rem auto; max-width: 600px;">
+                    <div class="card" style="background: linear-gradient(135deg, #f7931a 0%, #e58a0c 100%); color: white; padding: 2rem; border-radius: 12px; box-shadow: 0 8px 24px rgba(247, 147, 26, 0.2);">
+                        <div class="card-header" style="text-align: center; margin-bottom: 1.5rem; border: none;">
+                            <h3 style="margin: 0 0 0.5rem 0; color: white; font-size: 1.3rem; font-weight: 600;">Send Remittance</h3>
+                            <p style="color: rgba(255, 255, 255, 0.9); margin: 0;">Send money to Zimbabwe in minutes</p>
                         </div>
 
                         <form id="transfer-form">
                             <!-- Sender Section -->
-                            <div class="form-section">
-                                <h4>Your Details</h4>
+                            <div class="form-section" style="border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 1.5rem; padding-bottom: 1.5rem;">
+                                <h4 style="color: white; margin-bottom: 1rem; font-size: 1rem; font-weight: 600;">Your Details</h4>
                                 <div class="form-group">
-                                    <label for="sender-phone">Your Phone (E.164 format)</label>
-                                    <input type="tel" id="sender-phone" name="sender_phone" placeholder="+27..." required>
-                                    <small style="color: #666; margin-top: 0.5rem;">Include country code (e.g., +27 for South Africa)</small>
+                                    <label for="sender-phone" style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: white; opacity: 0.95;">Your Phone (E.164 format)</label>
+                                    <input type="tel" id="sender-phone" name="sender_phone" placeholder="+27..." required style="width: 100%; padding: 0.75rem; border: none; border-radius: 6px; font-size: 1rem; background: white; color: #333;">
+                                    <small style="color: rgba(255,255,255,0.85); margin-top: 0.5rem; display: block; font-size: 0.85rem;">Include country code (e.g., +27 for South Africa)</small>
                                 </div>
                             </div>
 
                             <!-- Amount Section -->
-                            <div class="form-section">
-                                <h4>Amount for Recipient</h4>
+                            <div class="form-section" style="border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 1.5rem; padding-bottom: 1.5rem;">
+                                <h4 style="color: white; margin-bottom: 1rem; font-size: 1rem; font-weight: 600;">Amount for Recipient</h4>
                                 <div class="form-group">
-                                    <label for="amount-zar">Amount recipient receives (ZAR)</label>
-                                    <input type="number" id="amount-zar" name="amount_zar" placeholder="300.00" step="0.01" min="0" required>
-                                    <small style="color: #666; margin-top: 0.5rem;">Allowed: ZAR 100.00 - 500.00 (recipient receives)</small>
+                                    <label for="amount-zar" style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: white; opacity: 0.95;">Amount recipient receives (ZAR)</label>
+                                    <input type="number" id="amount-zar" name="amount_zar" placeholder="300.00" step="0.01" min="0" required style="width: 100%; padding: 0.75rem; border: none; border-radius: 6px; font-size: 1rem; background: white; color: #333;">
+                                    <small style="color: rgba(255,255,255,0.85); margin-top: 0.5rem; display: block; font-size: 0.85rem;">Allowed: ZAR 100.00 - 500.00 (recipient receives)</small>
                                 </div>
 
-                                <div id="quote-display" class="quote-display">
-                                    <p class="text-muted">Enter an amount to see fees and payment total</p>
+                                <div id="quote-display" class="quote-display" style="background: rgba(255,255,255,0.15); padding: 1rem; border-radius: 6px; margin-top: 1rem; border: 1px solid rgba(255,255,255,0.2);">
+                                    <p class="text-muted" style="margin: 0; color: rgba(255,255,255,0.85); font-size: 0.9rem;">Enter an amount to see fees and payment total</p>
                                 </div>
                             </div>
 
                             <!-- Recipient Section -->
-                            <div class="form-section">
-                                <h4>Recipient Details</h4>
-                                <div class="form-group">
-                                    <label for="receiver-name">Recipient Full Name</label>
-                                    <input type="text" id="receiver-name" name="receiver_name" placeholder="John Doe" required>
+                            <div class="form-section" style="border-bottom: none; margin-bottom: 1.5rem; padding-bottom: 0;">
+                                <h4 style="color: white; margin-bottom: 1rem; font-size: 1rem; font-weight: 600;">Recipient Details</h4>
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label for="receiver-name" style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: white; opacity: 0.95;">Recipient Full Name</label>
+                                    <input type="text" id="receiver-name" name="receiver_name" placeholder="John Doe" required style="width: 100%; padding: 0.75rem; border: none; border-radius: 6px; font-size: 1rem; background: white; color: #333;">
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 1rem;">
+                                    <label for="receiver-phone" style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: white; opacity: 0.95;">Recipient Phone (Zimbabwe)</label>
+                                    <input type="tel" id="receiver-phone" name="receiver_phone" placeholder="+263..." required style="width: 100%; padding: 0.75rem; border: none; border-radius: 6px; font-size: 1rem; background: white; color: #333;">
+                                    <small style="color: rgba(255,255,255,0.85); margin-top: 0.5rem; display: block; font-size: 0.85rem;">Zimbabwe phone number</small>
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="receiver-phone">Recipient Phone (Zimbabwe)</label>
-                                    <input type="tel" id="receiver-phone" name="receiver_phone" placeholder="+263..." required>
-                                    <small style="color: #666; margin-top: 0.5rem;">Zimbabwe phone number</small>
-                                </div>
-
-                                <div class="form-group">
-                                    <label for="receiver-location">Recipient Location</label>
-                                    <select id="receiver-location" name="receiver_location" required>
+                                    <label for="receiver-location" style="display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: white; opacity: 0.95;">Recipient Location</label>
+                                    <select id="receiver-location" name="receiver_location" required style="width: 100%; padding: 0.75rem; border: none; border-radius: 6px; font-size: 1rem; background: white; color: #333;">
                                         <option value="">-- Select Location --</option>
                                         <option value="ZWE_HRR">Harare</option>
                                         <option value="ZWE_BUL">Bulawayo</option>
@@ -308,7 +308,7 @@
                             </div>
 
                             <!-- Submit Button -->
-                            <button type="submit" class="btn btn-primary btn-block" style="font-size: 1.1rem; padding: 1rem;">
+                            <button type="submit" class="btn btn-primary btn-block" style="font-size: 1.1rem; padding: 1rem; background-color: white; color: #f7931a; font-weight: 600; border: none; cursor: pointer; border-radius: 6px; width: 100%;">
                                 <i class="fas fa-paper-plane"></i> Continue to Payment
                             </button>
                         </form>
