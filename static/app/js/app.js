@@ -104,12 +104,11 @@ function init_event_listeners() {
             APP_STATE.userPhone = e.target.value;
             localStorage.setItem('user_phone', e.target.value);
         });
-    }
-
-    // Pre-fill user phone from localStorage (for returning users)
-    const phoneInput = document.getElementById('sender-phone');
-    if (phoneInput && APP_STATE.userPhone) {
-        phoneInput.value = APP_STATE.userPhone;
+        
+        // Pre-fill user phone from localStorage (for returning users)
+        if (APP_STATE.userPhone) {
+            phoneInput.value = APP_STATE.userPhone;
+        }
     }
 
     // Amount input - fetch quote on blur only
