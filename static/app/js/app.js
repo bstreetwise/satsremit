@@ -513,9 +513,14 @@ function load_payment_page() {
                 <div class="invoice-request">
                     <label>Invoice:</label>
                     <textarea readonly>${transfer.invoice_request}</textarea>
-                    <button class="btn btn-secondary" onclick="copy_to_clipboard('${transfer.invoice_request}')">
-                        <i class="fas fa-copy"></i> Copy
-                    </button>
+                    <div style="display: flex; gap: 0.8rem; margin-top: 0.8rem;">
+                        <button class="btn btn-secondary" onclick="copy_to_clipboard('${transfer.invoice_request}')" style="flex: 1;">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        <button class="btn btn-primary" onclick="share_invoice('${transfer.invoice_request}', '${transfer.reference}', '${transfer.amount_zar}', '${transfer.agent_location}')" style="flex: 1;">
+                            <i class="fas fa-share-alt"></i> Share
+                        </button>
+                    </div>
                 </div>
                 <div class="invoice-hash">
                     <small>Payment Hash: ${transfer.invoice_hash}</small>
@@ -862,6 +867,95 @@ function debounce(func, wait) {
 function copy_to_clipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
         show_alert('Copied to clipboard!', 'success');
+    });
+}
+
+function share_invoice(invoiceRequest, reference, amountZAR, agentLocation) {
+    const shareMessage = `SatsRemit Payment Invoice\n\nReference: ${reference}\nAmount: R${amountZAR}\nRecipient Location: ${agentLocation}\n\nInvoice:\n${invoiceRequest}`;
+    
+    // Try native share API first
+    if (navigator.share) {
+        navigator.share({
+            title: 'SatsRemit Invoice',
+            text: shareMessage,
+            url: window.location.href
+        }).catch(err => {
+            if (err.name !== 'AbortError') {
+                console.error('Share failed:', err);
+                show_deep_link_options(invoiceRequest, reference, amountZAR, agentLocation, shareMessage);
+            }
+        });
+    } else {
+        // Fallback to deep link options
+        show_deep_link_options(invoiceRequest, reference, amountZAR, agentLocation, shareMessage);
+    }
+}
+
+function show_deep_link_options(invoiceRequest, reference, amountZAR, agentLocation, shareMessage) {
+    // WhatsApp deep link
+    const whatsappText = encodeURIComponent(shareMessage);
+    const whatsappLink = `https://wa.me/?text=${whatsappText}`;
+    
+    // Email deep link
+    const emailSubject = encodeURIComponent(`SatsRemit Invoice - Reference ${reference}`);
+    const emailBody = encodeURIComponent(shareMessage);
+    const emailLink = `mailto:?subject=${emailSubject}&body=${emailBody}`;
+    
+    // Telegram deep link
+    const telegramText = encodeURIComponent(shareMessage);
+    const telegramLink = `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${telegramText}`;
+    
+    // Create modal with share options
+    const existingModal = document.getElementById('share-modal');
+    if (existingModal) existingModal.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'share-modal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; padding: 2rem; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
+            <h3 style="margin-top: 0; margin-bottom: 1.5rem; color: #333;">Share Invoice</h3>
+            
+            <a href="${whatsappLink}" target="_blank" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; margin-bottom: 0.8rem; background: #25d366; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: background 0.3s;">
+                <i class="fab fa-whatsapp" style="font-size: 1.5rem;"></i>
+                <span>Share on WhatsApp</span>
+            </a>
+            
+            <a href="${emailLink}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; margin-bottom: 0.8rem; background: #ea4335; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: background 0.3s;">
+                <i class="fas fa-envelope" style="font-size: 1.5rem;"></i>
+                <span>Share via Email</span>
+            </a>
+            
+            <a href="${telegramLink}" target="_blank" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; margin-bottom: 0.8rem; background: #0088cc; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: background 0.3s;">
+                <i class="fab fa-telegram" style="font-size: 1.5rem;"></i>
+                <span>Share on Telegram</span>
+            </a>
+            
+            <button onclick="document.getElementById('share-modal').remove()" style="width: 100%; padding: 1rem; background: #f0f0f0; border: none; border-radius: 8px; font-weight: 600; color: #333; cursor: pointer; transition: background 0.3s;">
+                Close
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
     });
 }
 
