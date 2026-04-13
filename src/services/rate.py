@@ -201,11 +201,11 @@ class RateService:
 
     async def get_usd_per_zar(self) -> Decimal:
         """
-        Get USD per ZAR exchange rate from multiple sources (SA + Zimbabwe)
-        Aggregates rates from both markets for blended rate
+        Get USD per ZAR exchange rate from reliable market sources
+        Uses direct USD/ZAR data for accuracy matching standard rates (like Google)
 
         Returns:
-            Decimal USD per ZAR (e.g., Decimal("0.0062"))
+            Decimal ZAR per USD (e.g., Decimal("20.50"))
         """
         pair = "USD_ZAR"
 
@@ -232,51 +232,21 @@ class RateService:
                 logger.debug(f"Using cached USD/ZAR from DB: {rate}")
                 return rate
 
-        # Fetch fresh rates from both markets and aggregate
+        # Fetch fresh rate directly from reliable sources
         try:
-            rates = []
-
-            # Fetch from South African sources
-            try:
-                kraken_rate = await self._fetch_kraken()
-                sa_rate_from_kraken = Decimal("1") / (kraken_rate / Decimal("1000000"))  # 1 USD in ZAR via BTC
-                rates.append(sa_rate_from_kraken)
-                logger.debug(f"SA Rate (Kraken via BTC): 1 USD = {sa_rate_from_kraken:.4f} ZAR")
-            except Exception as e:
-                logger.warning(f"Failed to fetch Kraken rate: {e}")
-
-            try:
-                bitstamp_rate = await self._fetch_bitstamp()
-                sa_rate_from_bitstamp = Decimal("1") / (bitstamp_rate / Decimal("1000000"))
-                rates.append(sa_rate_from_bitstamp)
-                logger.debug(f"SA Rate (Bitstamp via BTC): 1 USD = {sa_rate_from_bitstamp:.4f} ZAR")
-            except Exception as e:
-                logger.warning(f"Failed to fetch Bitstamp rate: {e}")
-
-            # Fetch from Zimbabwe sources
-            try:
-                zwl_rate = await self._fetch_zimbabwe_rate()
-                rates.append(zwl_rate)
-                logger.debug(f"ZWL Rate (Zimbabwe): 1 USD = {zwl_rate:.4f} ZAR")
-            except Exception as e:
-                logger.warning(f"Failed to fetch Zimbabwe rate: {e}")
-
-            # Aggregate rates (average or weighted)
-            if not rates:
-                raise ValueError("Could not fetch rates from any source")
-
-            aggregated_rate = sum(rates) / len(rates)
-            logger.info(f"Aggregated USD/ZAR rate from {len(rates)} sources: {aggregated_rate}")
+            rate = await self._fetch_usd_zar_direct()
+            
+            logger.info(f"Fresh USD/ZAR rate fetched: {rate} ZAR per USD")
 
             # Update cache
             if db_cache:
-                db_cache.rate = aggregated_rate
+                db_cache.rate = rate
                 db_cache.cached_at = datetime.utcnow()
             else:
                 db_cache = RateCache(
                     pair=pair,
-                    rate=aggregated_rate,
-                    source="aggregated_sa_zw",
+                    rate=rate,
+                    source="coingecko_direct",
                 )
                 self.db.add(db_cache)
 
@@ -284,14 +254,14 @@ class RateService:
 
             # Update memory cache
             self._rate_cache[pair] = {
-                "rate": aggregated_rate,
+                "rate": rate,
                 "expires_at": datetime.utcnow() + timedelta(minutes=self.cache_minutes),
             }
 
-            return aggregated_rate
+            return rate
 
         except Exception as e:
-            logger.error(f"Failed to fetch aggregated USD/ZAR rate: {e}")
+            logger.error(f"Failed to fetch USD/ZAR rate: {e}")
             # Fall back to database cache if available
             if db_cache:
                 rate = Decimal(str(db_cache.rate))
@@ -299,21 +269,20 @@ class RateService:
                 return rate
             raise
 
-    async def _fetch_zimbabwe_rate(self) -> Decimal:
+    async def _fetch_usd_zar_direct(self) -> Decimal:
         """
-        Fetch USD to ZWL rate from Zimbabwe sources
+        Fetch USD to ZAR exchange rate directly from reliable sources
+        Uses CoinGecko's fiat conversion for accurate market rates
         
         Returns:
-            Decimal USD per ZAR (reverse of ZWL to USD, converted to ZAR equivalent)
+            Decimal ZAR per USD (e.g., Decimal("20.50"))
         """
         try:
-            # Try CoinGecko for ZWL data
+            # Try CoinGecko's USD to ZAR conversion (most reliable)
             url = "https://api.coingecko.com/api/v3/simple/price"
             params = {
                 "ids": "bitcoin",
-                "vs_currencies": "zwl",
-                "include_market_cap": "false",
-                "include_24hr_vol": "false",
+                "vs_currencies": "usd,zar",
             }
 
             async with httpx.AsyncClient(timeout=30) as client:
@@ -321,32 +290,59 @@ class RateService:
                 response.raise_for_status()
 
             data = response.json()
-            btc_in_zwl = Decimal(str(data["bitcoin"]["zwl"]))
+            btc_usd = Decimal(str(data["bitcoin"]["usd"]))
+            btc_zar = Decimal(str(data["bitcoin"]["zar"]))
 
-            if btc_in_zwl <= 0:
-                raise ValueError("Invalid rate from CoinGecko ZWL")
+            if btc_usd <= 0 or btc_zar <= 0:
+                raise ValueError("Invalid rates from CoinGecko")
 
-            # Get current SA ZAR rate
-            zar_btc_rate = await self.get_zar_per_btc()
-
-            # Calculate implied USD to ZAR via cross-rate
-            # USD per ZAR = ZAR per BTC / ZWL per BTC * (if ZWL = ZAR roughly)
-            # For Zimbabwe, we need to account for parallel market rates
-            # Approximate: 1 USD ≈ 1000+ ZWL (parallel market is much higher than official)
-            # We'll use CoinGecko's implied rate
+            # Calculate USD to ZAR rate
+            usd_to_zar = btc_zar / btc_usd
             
-            usd_per_zwl = Decimal("1") / (btc_in_zwl / zar_btc_rate)
-            logger.debug(f"Zimbabwe Rate (CoinGecko ZWL): Implied USD/ZAR via ZWL: {usd_per_zwl}")
+            logger.debug(f"CoinGecko USD/ZAR rate: 1 USD = {usd_to_zar:.2f} ZAR")
             
-            return usd_per_zwl
+            return usd_to_zar
+
+        except httpx.HTTPError as e:
+            logger.error(f"CoinGecko USD/ZAR fetch error: {e}")
+            # Try alternative method
+            try:
+                return await self._fetch_usd_zar_fallback()
+            except Exception as fallback_e:
+                logger.error(f"Fallback USD/ZAR fetch also failed: {fallback_e}")
+                raise
+
+    async def _fetch_usd_zar_fallback(self) -> Decimal:
+        """
+        Fallback method to fetch USD/ZAR rate using Bitcoin cross-rate
+        
+        Returns:
+            Decimal ZAR per USD
+        """
+        try:
+            # Get BTC prices in both currencies
+            url = "https://api.coingecko.com/api/v3/simple/price"
+            params = {
+                "ids": "bitcoin",
+                "vs_currencies": "usd,zar",
+            }
+
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(url, params=params)
+                response.raise_for_status()
+
+            data = response.json()
+            btc_usd = Decimal(str(data["bitcoin"]["usd"]))
+            btc_zar = Decimal(str(data["bitcoin"]["zar"]))
+
+            usd_to_zar = btc_zar / btc_usd
+            logger.debug(f"Fallback USD/ZAR via BTC cross-rate: 1 USD = {usd_to_zar:.2f} ZAR")
+            
+            return usd_to_zar
 
         except Exception as e:
-            logger.warning(f"Failed to fetch Zimbabwe rate from CoinGecko: {e}")
-            # Return fallback rate based on SA rate
-            zar_btc = await self.get_zar_per_btc()
-            fallback = Decimal("1") / (zar_btc / Decimal("24000000"))  # Rough estimate
-            logger.warning(f"Using fallback USD/ZAR rate: {fallback}")
-            return fallback
+            logger.error(f"Fallback method failed: {e}")
+            raise
 
     async def get_zar_for_sats(self, sats: int) -> Decimal:
         """
