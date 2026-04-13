@@ -214,6 +214,10 @@ function display_quote(quote, requestedReceiverAmount = null) {
                 <label>Exchange rate:</label>
                 <span>1 USD = ${parseFloat(quote.rate_usd_per_zar).toFixed(2)} ZAR</span>
             </div>
+            <div class="quote-row">
+                <label>BTC Rate:</label>
+                <span>1 BTC = ${format_currency(quote.rate_zar_per_btc)}</span>
+            </div>
             <div class="divider"></div>
             <div class="quote-row">
                 <label style="color: #666;">Total fees (1.0%):</label>
