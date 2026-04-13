@@ -286,7 +286,7 @@ main {
 /* ===== FORMS ===== */
 
 .form-group {
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.6rem;
     display: flex;
     flex-direction: column;
 }
@@ -344,8 +344,8 @@ input[type="tel"], input[type="email"] {
 }
 
 .form-section {
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
+    margin-bottom: 0.7rem;
+    padding-bottom: 0.7rem;
     border-bottom: 1px solid var(--color-border);
 }
 
@@ -360,9 +360,9 @@ input[type="tel"], input[type="email"] {
 
 .quote-display {
     background-color: var(--color-light);
-    padding: 1rem;
+    padding: 0.8rem;
     border-radius: var(--radius);
-    margin-bottom: 1rem;
+    margin-bottom: 0.8rem;
     min-height: auto;
 }
 

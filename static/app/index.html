@@ -248,39 +248,37 @@
 
             <!-- TRANSFER PAGE -->
             <div id="page-transfer" class="page">
-                <div class="transfer-form" style="margin: 2rem auto; max-width: 600px;">
-                    <div class="card" style="background: linear-gradient(135deg, #f7931a 0%, #e58a0c 100%); color: white; padding: 1.2rem; border-radius: 12px; box-shadow: 0 8px 24px rgba(247, 147, 26, 0.2);">
-                        <div class="card-header" style="text-align: center; margin-bottom: 1rem; border: none;">
-                            <h3 style="margin: 0 0 0.35rem 0; color: white; font-size: 1.1rem; font-weight: 600;">Send Remittance</h3>
-                            <p style="color: rgba(255, 255, 255, 0.9); margin: 0; font-size: 0.9rem;">Send money to Zimbabwe in minutes</p>
+                <div class="transfer-form" style="margin: 0.8rem auto; max-width: 520px;">
+                    <div class="card" style="background: linear-gradient(135deg, #f7931a 0%, #e58a0c 100%); color: white; padding: 0.9rem; border-radius: 12px; box-shadow: 0 8px 24px rgba(247, 147, 26, 0.2);">
+                        <div class="card-header" style="text-align: center; margin-bottom: 0.7rem; border: none;">
+                            <h3 style="margin: 0 0 0.2rem 0; color: white; font-size: 1rem; font-weight: 600;">Send Remittance</h3>
+                            <p style="color: rgba(255, 255, 255, 0.9); margin: 0; font-size: 0.8rem;">Send money to Zimbabwe in minutes</p>
                         </div>
 
                         <form id="transfer-form">
                             <!-- Sender Section -->
-                            <div class="form-section" style="border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 1rem; padding-bottom: 1rem;">
-                                <h4 style="color: white; margin-bottom: 0.7rem; font-size: 0.95rem; font-weight: 600;">Your Details</h4>
+                            <div class="form-section" style="border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 0.7rem; padding-bottom: 0.7rem;">
+                                <h4 style="color: white; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600;">Your Details</h4>
                                 <div class="form-group">
-                                    <label for="sender-phone" style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.85rem; color: white; opacity: 0.95;">Your Phone (E.164 format)</label>
-                                    <input type="tel" id="sender-phone" name="sender_phone" placeholder="+27..." required style="width: 100%; padding: 0.6rem; border: none; border-radius: 6px; font-size: 1rem; background: white; color: #333;">
-                                    <small style="color: rgba(255,255,255,0.85); margin-top: 0.3rem; display: block; font-size: 0.8rem;">Include country code (e.g., +27 for South Africa)</small>
+                                    <label for="sender-phone" style="display: block; margin-bottom: 0.25rem; font-weight: 600; font-size: 0.8rem; color: white; opacity: 0.95;">Your Phone (E.164)</label>
+                                    <input type="tel" id="sender-phone" name="sender_phone" placeholder="+27..." required style="width: 100%; padding: 0.5rem; border: none; border-radius: 6px; font-size: 0.95rem; background: white; color: #333;">
                                 </div>
                             </div>
 
                             <!-- Amount Section -->
-                            <div class="form-section" style="border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 1rem; padding-bottom: 1rem;">
-                                <h4 style="color: white; margin-bottom: 0.7rem; font-size: 0.95rem; font-weight: 600;">You Send</h4>
-                                <div class="form-group" style="margin-bottom: 0.8rem;">
-                                    <label for="amount-zar" style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.85rem; color: white; opacity: 0.95;">Amount</label>
+                            <div class="form-section" style="border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 0.7rem; padding-bottom: 0.7rem;">
+                                <h4 style="color: white; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600;">You Send</h4>
+                                <div class="form-group" style="margin-bottom: 0.6rem;">
+                                    <label for="amount-zar" style="display: block; margin-bottom: 0.25rem; font-weight: 600; font-size: 0.8rem; color: white; opacity: 0.95;">Amount</label>
                                     <div style="display: flex; align-items: center; background: white; border-radius: 6px; overflow: hidden;">
-                                        <input type="number" id="amount-zar" name="amount_zar" placeholder="300.00" step="0.01" min="0" required oninput="update_quote_display()" style="flex: 1; padding: 0.6rem; border: none; font-size: 1rem; background: white; color: #333;">
-                                        <span style="padding: 0.6rem 0.8rem; font-weight: bold; color: #333; background: #f0f0f0; font-size: 0.95rem;">ZAR</span>
+                                        <input type="number" id="amount-zar" name="amount_zar" placeholder="300" step="0.01" min="0" required oninput="update_quote_display()" style="flex: 1; padding: 0.5rem; border: none; font-size: 0.95rem; background: white; color: #333;">
+                                        <span style="padding: 0.5rem 0.7rem; font-weight: bold; color: #333; background: #f0f0f0; font-size: 0.9rem;">ZAR</span>
                                     </div>
-                                    <small style="color: rgba(255,255,255,0.85); margin-top: 0.3rem; display: block; font-size: 0.8rem;">Allowed: ZAR 10.00 - 1000.00</small>
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="receiver-location" style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.85rem; color: white; opacity: 0.95;">Receive In</label>
-                                    <select id="receiver-location" name="receiver_location" required style="width: 100%; padding: 0.6rem; border: none; border-radius: 6px; font-size: 1rem; background: white; color: #333;">
+                                    <label for="receiver-location" style="display: block; margin-bottom: 0.25rem; font-weight: 600; font-size: 0.8rem; color: white; opacity: 0.95;">Receive In</label>
+                                    <select id="receiver-location" name="receiver_location" required style="width: 100%; padding: 0.5rem; border: none; border-radius: 6px; font-size: 0.95rem; background: white; color: #333;">
                                         <option value="">-- Select Location --</option>
                                         <option value="ZWE_HRR">Harare</option>
                                         <option value="ZWE_BUL">Bulawayo</option>
@@ -292,29 +290,28 @@
                             </div>
 
                             <!-- Recipient Section -->
-                            <div class="form-section" style="border-bottom: 1px solid rgba(255,255,255,0.2); margin-bottom: 1rem; padding-bottom: 1rem;">
-                                <h4 style="color: white; margin-bottom: 0.7rem; font-size: 0.95rem; font-weight: 600;">Recipient Details</h4>
-                                <div class="form-group" style="margin-bottom: 0.7rem;">
-                                    <label for="receiver-name" style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.85rem; color: white; opacity: 0.95;">Recipient Full Name</label>
-                                    <input type="text" id="receiver-name" name="receiver_name" placeholder="John Doe" required style="width: 100%; padding: 0.6rem; border: none; border-radius: 6px; font-size: 1rem; background: white; color: #333;">
+                            <div class="form-section" style="border-bottom: none; margin-bottom: 0.7rem; padding-bottom: 0;">
+                                <h4 style="color: white; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600;">Recipient</h4>
+                                <div class="form-group" style="margin-bottom: 0.6rem;">
+                                    <label for="receiver-name" style="display: block; margin-bottom: 0.25rem; font-weight: 600; font-size: 0.8rem; color: white; opacity: 0.95;">Full Name</label>
+                                    <input type="text" id="receiver-name" name="receiver_name" placeholder="John Doe" required style="width: 100%; padding: 0.5rem; border: none; border-radius: 6px; font-size: 0.95rem; background: white; color: #333;">
                                 </div>
 
                                 <div class="form-group">
-                                    <label for="receiver-phone" style="display: block; margin-bottom: 0.35rem; font-weight: 600; font-size: 0.85rem; color: white; opacity: 0.95;">Recipient Phone (Zimbabwe)</label>
-                                    <input type="tel" id="receiver-phone" name="receiver_phone" placeholder="+263..." required style="width: 100%; padding: 0.6rem; border: none; border-radius: 6px; font-size: 1rem; background: white; color: #333;">
-                                    <small style="color: rgba(255,255,255,0.85); margin-top: 0.3rem; display: block; font-size: 0.8rem;">Zimbabwe phone number</small>
+                                    <label for="receiver-phone" style="display: block; margin-bottom: 0.25rem; font-weight: 600; font-size: 0.8rem; color: white; opacity: 0.95;">Phone (Zimbabwe)</label>
+                                    <input type="tel" id="receiver-phone" name="receiver_phone" placeholder="+263..." required style="width: 100%; padding: 0.5rem; border: none; border-radius: 6px; font-size: 0.95rem; background: white; color: #333;">
                                 </div>
                             </div>
 
-                            <!-- Quote Display Section -->
-                            <div class="form-section" style="border-bottom: none; margin-bottom: 1rem; padding-bottom: 0;">
-                                <div id="quote-display" class="quote-display" style="background: rgba(255,255,255,0.15); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                                    <p class="text-muted" style="margin: 0; color: rgba(255,255,255,0.85); font-size: 0.85rem;">Enter an amount to see fees and payment total</p>
+                            <!-- Quote Display Section (Compact) -->
+                            <div style="margin-bottom: 0.7rem;">
+                                <div id="quote-display" class="quote-display" style="background: rgba(255,255,255,0.15); padding: 0.8rem; border-radius: 8px;">
+                                    <p class="text-muted" style="margin: 0; color: rgba(255,255,255,0.85); font-size: 0.8rem;">Enter amount to see total</p>
                                 </div>
                             </div>
 
                             <!-- Submit Button -->
-                            <button type="submit" class="btn btn-primary btn-block" style="font-size: 1rem; padding: 0.8rem; background-color: white; color: #f7931a; font-weight: 600; border: none; cursor: pointer; border-radius: 6px; width: 100%;">
+                            <button type="submit" class="btn btn-primary btn-block" style="font-size: 0.95rem; padding: 0.65rem; background-color: white; color: #f7931a; font-weight: 600; border: none; cursor: pointer; border-radius: 6px; width: 100%; margin: 0;">
                                 <i class="fas fa-paper-plane"></i> Continue to Payment
                             </button>
                         </form>
