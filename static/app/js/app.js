@@ -243,8 +243,8 @@ async function update_homepage_quote() {
     const errorText = document.getElementById('homepage-amount-error-text');
     const amount = parseFloat(amountInput?.value);
 
-    const MIN_AMOUNT = 100;
-    const MAX_AMOUNT = 500;
+    const MIN_AMOUNT = 10;
+    const MAX_AMOUNT = 1000;
 
     // Clear previous error message
     if (errorMsg) {

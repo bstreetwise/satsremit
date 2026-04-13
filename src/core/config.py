@@ -73,8 +73,8 @@ class Settings(BaseSettings):
     # Platform Settings
     platform_fee_percent: float = 0.5
     agent_commission_percent: float = 0.5
-    min_transfer_zar: float = 100.0
-    max_transfer_zar: float = 500.0
+    min_transfer_zar: float = 10.0
+    max_transfer_zar: float = 1000.0
     pin_expiry_minutes: int = 5
 
     # Security
