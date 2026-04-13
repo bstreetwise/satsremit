@@ -445,6 +445,20 @@ input[type="tel"], input[type="email"] {
     opacity: 0.95;
 }
 
+/* Responsive: Mobile Stack */
+@media (max-width: 1024px) {
+    main > div {
+        display: grid;
+        grid-template-columns: 1fr !important;
+        gap: 2rem !important;
+    }
+
+    main > div > div:nth-child(2) {
+        position: static !important;
+        top: auto !important;
+    }
+}
+
 /* ===== PAYMENT PAGE ===== */
 
 .payment-card {

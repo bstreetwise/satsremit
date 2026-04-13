@@ -255,12 +255,10 @@ async function update_homepage_quote() {
             const receiveAmount = quote.receiver_gets_zar;
             const exchangeRate = quote.rate_zar_per_btc;
             const totalFees = quote.total_fees_zar;
-            const youPay = quote.amount_zar;
 
             document.getElementById('homepage-receive-amount').textContent = format_currency(receiveAmount);
             document.getElementById('homepage-exchange-rate').textContent = `1 ZAR = ${(1/exchangeRate).toFixed(6)} USD`;
             document.getElementById('homepage-total-fee').textContent = `${format_currency(totalFees)}`;
-            document.getElementById('homepage-you-pay').textContent = `${format_currency(youPay)}`;
             
             quoteResults.style.display = 'block';
         }
